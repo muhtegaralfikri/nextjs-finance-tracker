@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  passwordHash String
+
+  wallets      Wallet[]
+  categories   Category[]
+  transactions Transaction[]
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Wallet {
+  id             String         @id @default(cuid())
+  user           User           @relation(fields: [userId], references: [id])
+  userId         String
+
+  name           String
+  type           WalletType
+  initialBalance Decimal        @default(0)
+  currency       String         @default("IDR")
+
+  transactions   Transaction[]
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model Category {
+  id           String         @id @default(cuid())
+  user         User           @relation(fields: [userId], references: [id])
+  userId       String
+
+  name         String
+  type         CategoryType
+  isDefault    Boolean        @default(false)
+
+  transactions Transaction[]
+
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  user        User            @relation(fields: [userId], references: [id])
+  userId      String
+
+  wallet      Wallet          @relation(fields: [walletId], references: [id])
+  walletId    String
+
+  category    Category        @relation(fields: [categoryId], references: [id])
+  categoryId  String
+
+  type        TransactionType
+  amount      Decimal         @default(0)
+  date        DateTime
+  note        String?
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+enum WalletType {
+  CASH
+  BANK
+  E_WALLET
+  INVESTMENT
+  OTHER
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
