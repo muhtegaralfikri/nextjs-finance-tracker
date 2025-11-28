@@ -24,7 +24,6 @@ export default async function WalletsPage() {
     <AppShell>
       <div className="mx-auto max-w-5xl px-4 py-8 space-y-4">
         <div>
-          <p className="text-sm text-slate-400">Phase 5</p>
           <h1 className="text-3xl font-semibold">Wallet Management</h1>
           <p className="text-slate-400 text-sm mt-1">
             Buat, edit, dan hapus wallet dengan feedback loading/error. Saldo dihitung dari saldo awal + transaksi.

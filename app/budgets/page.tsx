@@ -55,7 +55,6 @@ export default async function BudgetsPage() {
     <AppShell>
       <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
         <div>
-          <p className="text-sm text-slate-400">Phase 5</p>
           <h1 className="text-3xl font-semibold">Budgets & Savings Goals</h1>
           <p className="text-slate-400 text-sm mt-1">
             Tetapkan batas pengeluaran per kategori dan target tabungan yang ingin dicapai dengan UX lebih responsif.

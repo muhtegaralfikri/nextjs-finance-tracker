@@ -3,18 +3,26 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
+import {
+  LayoutDashboard,
+  Moon,
+  ReceiptText,
+  Sun,
+  Target,
+  WalletCards,
+} from "lucide-react";
 
 type NavItem = {
   href: string;
   label: string;
-  icon: string;
+  icon: typeof LayoutDashboard;
 };
 
 const navItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: "🏠" },
-  { href: "/wallets", label: "Wallets", icon: "👛" },
-  { href: "/transactions", label: "Transaksi", icon: "🧾" },
-  { href: "/budgets", label: "Budget", icon: "🎯" },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/wallets", label: "Wallets", icon: WalletCards },
+  { href: "/transactions", label: "Transaksi", icon: ReceiptText },
+  { href: "/budgets", label: "Budget", icon: Target },
 ];
 
 function isActive(pathname: string | null, href: string) {
@@ -62,6 +70,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <nav className="px-3 py-2 space-y-1">
             {navItems.map((item) => {
               const active = isActive(pathname, item.href);
+              const Icon = item.icon;
               return (
                 <Link
                   key={item.href}
@@ -72,9 +81,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                       : "text-slate-300 hover:bg-slate-900"
                   }`}
                 >
-                  <span className="text-lg" aria-hidden>
-                    {item.icon}
-                  </span>
+                  <Icon className="h-5 w-5" aria-hidden />
                   <span>{item.label}</span>
                 </Link>
               );
@@ -120,8 +127,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 type="button"
                 onClick={toggleTheme}
                 className="rounded-xl border border-slate-800 px-3 py-2 text-slate-300 hover:border-emerald-400/60 transition"
+                aria-label={theme === "dark" ? "Mode terang" : "Mode gelap"}
               >
-                {theme === "dark" ? "Mode terang" : "Mode gelap"}
+                {theme === "dark" ? (
+                  <Sun className="h-5 w-5 text-white" aria-hidden />
+                ) : (
+                  <Moon className="h-5 w-5 text-slate-900" aria-hidden />
+                )}
               </button>
             </div>
           </div>
@@ -135,6 +147,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <div className="grid grid-cols-4">
           {navItems.map((item) => {
             const active = isActive(pathname, item.href);
+            const Icon = item.icon;
             return (
               <Link
                 key={item.href}
@@ -144,9 +157,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 }`}
                 aria-label={item.label}
               >
-                <span className="text-lg" aria-hidden>
-                  {item.icon}
-                </span>
+                <Icon className="h-5 w-5" aria-hidden />
                 <span>{item.label}</span>
               </Link>
             );
