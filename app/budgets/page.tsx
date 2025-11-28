@@ -8,6 +8,7 @@ import { getGoalsWithProgress } from "@/lib/goals";
 import { ensureDefaultCategories } from "@/lib/categories";
 import BudgetsClient, { BudgetCategory, BudgetItem } from "./BudgetsClient";
 import GoalsClient, { GoalItem } from "./GoalsClient";
+import AppShell from "@/components/AppShell";
 
 export default async function BudgetsPage() {
   const session = await auth();
@@ -51,7 +52,7 @@ export default async function BudgetsPage() {
   }));
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
+    <AppShell>
       <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
         <div>
           <p className="text-sm text-slate-400">Phase 5</p>
@@ -65,6 +66,6 @@ export default async function BudgetsPage() {
 
         <GoalsClient initialGoals={goals} />
       </div>
-    </main>
+    </AppShell>
   );
 }

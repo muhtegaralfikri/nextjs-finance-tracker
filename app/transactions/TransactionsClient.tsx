@@ -393,7 +393,7 @@ export default function TransactionsClient({
           <CardTitle>Daftar Transaksi</CardTitle>
           <span className="text-xs text-slate-500">{transactions.length} transaksi</span>
         </div>
-        <div className="overflow-x-auto">
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-slate-400">
@@ -477,6 +477,73 @@ export default function TransactionsClient({
             </tbody>
           </table>
         </div>
+
+        <div className="sm:hidden space-y-2">
+          {loading && transactions.length === 0 ? (
+            <div className="flex items-center gap-2 text-sm text-slate-400">
+              <Spinner size="sm" /> Memuat transaksi...
+            </div>
+          ) : transactions.length === 0 ? (
+            <p className="text-sm text-slate-400">Tidak ada transaksi.</p>
+          ) : (
+            transactions.map((tx) => (
+              <div
+                key={tx.id}
+                className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 space-y-1"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-white">{tx.walletName}</p>
+                    <p className="text-xs text-slate-400">
+                      {tx.categoryName} • {dateFormatter.format(new Date(tx.date))}
+                    </p>
+                  </div>
+                  <span
+                    className={`px-2 py-1 text-xs rounded-full ${
+                      tx.type === TransactionType.INCOME
+                        ? "bg-emerald-500/10 text-emerald-300"
+                        : "bg-rose-500/10 text-rose-300"
+                    }`}
+                  >
+                    {tx.type}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-base font-semibold">
+                    <span
+                      className={
+                        tx.type === TransactionType.INCOME ? "text-emerald-300" : "text-rose-300"
+                      }
+                    >
+                      {formatCurrency(tx.amount)}
+                    </span>
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => startEdit(tx)}
+                      className="px-3 py-1 text-xs"
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      onClick={() => handleDelete(tx.id)}
+                      className="px-3 py-1 text-xs"
+                      loading={loading && editingId === tx.id}
+                    >
+                      Hapus
+                    </Button>
+                  </div>
+                </div>
+                {tx.note && <p className="text-xs text-slate-400">{tx.note}</p>}
+              </div>
+            ))
+          )}
+        </div>
+
         {loading && transactions.length > 0 && (
           <div className="mt-3 flex items-center gap-2 text-sm text-slate-400">
             <Spinner size="sm" /> Memproses...

@@ -8,6 +8,7 @@ import TransactionsClient, {
   TransactionCategory,
   TransactionWallet,
 } from "./TransactionsClient";
+import AppShell from "@/components/AppShell";
 
 function formatInputDate(date: Date) {
   const year = date.getFullYear();
@@ -71,7 +72,7 @@ export default async function TransactionsPage() {
   }));
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
+    <AppShell>
       <div className="mx-auto max-w-6xl px-4 py-8 space-y-4">
         <div>
           <p className="text-sm text-slate-400">Phase 5</p>
@@ -89,6 +90,6 @@ export default async function TransactionsPage() {
           initialTo={formatInputDate(to)}
         />
       </div>
-    </main>
+    </AppShell>
   );
 }

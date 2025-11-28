@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getWalletsWithBalance, decimalToNumber } from "@/lib/finance";
 import WalletsClient, { WalletClientData } from "./WalletsClient";
+import AppShell from "@/components/AppShell";
 
 export default async function WalletsPage() {
   const session = await auth();
@@ -20,7 +21,7 @@ export default async function WalletsPage() {
   }));
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
+    <AppShell>
       <div className="mx-auto max-w-5xl px-4 py-8 space-y-4">
         <div>
           <p className="text-sm text-slate-400">Phase 5</p>
@@ -32,6 +33,6 @@ export default async function WalletsPage() {
 
         <WalletsClient initialWallets={serialized} />
       </div>
-    </main>
+    </AppShell>
   );
 }

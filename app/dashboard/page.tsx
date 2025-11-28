@@ -7,6 +7,7 @@ import { getMonthlySummary } from "@/lib/summary";
 import { ensureDefaultCategories } from "@/lib/categories";
 import { getBudgetsWithProgress } from "@/lib/budgets";
 import { getGoalsWithProgress } from "@/lib/goals";
+import AppShell from "@/components/AppShell";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -33,7 +34,7 @@ export default async function DashboardPage() {
   const goals = await getGoalsWithProgress(userId);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
+    <AppShell>
       <div className="mx-auto max-w-6xl px-4 py-8">
         <header className="mb-6 flex flex-col gap-2">
           <p className="text-sm text-slate-400">Halo,</p>
@@ -275,7 +276,7 @@ export default async function DashboardPage() {
           </div>
         </section>
       </div>
-    </main>
+    </AppShell>
   );
 }
 
