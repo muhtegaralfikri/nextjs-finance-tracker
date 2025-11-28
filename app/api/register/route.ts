@@ -40,10 +40,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true }, { status: 201 });
   } catch (err) {
-    console.error(err);
+    // Di blok catch:
+  console.error("REGISTER ERROR:", err); // Pastikan ada prefix biar gampang dicari
     return NextResponse.json(
-      { error: "Terjadi kesalahan di server" },
-      { status: 500 }
-    );
+    { error: err instanceof Error ? err.message : "Terjadi kesalahan di server" },
+    { status: 500 }
+  );
+    
   }
 }
