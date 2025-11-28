@@ -6,8 +6,12 @@ const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
 };
 
-// Ambil konfigurasi dari DATABASE_URL
-const connectionString = process.env.DATABASE_URL || "mysql://finance_user:W32tdDDLXxKytm7S@localhost:3307/finance_db";
+// Ambil konfigurasi dari DATABASE_URL; tidak ada fallback hardcoded untuk menghindari kredensial bocor
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL tidak terdefinisi. Set di .env atau environment.");
+}
 
 // Parse connection string untuk mendapatkan konfigurasi
 const url = new URL(connectionString);

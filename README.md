@@ -259,7 +259,7 @@ This project is organized into **phases**.
 
 ---
 
-### 🚧 Phase 3 — Wallets, Transactions, and Monthly Summary
+### ✅ Phase 3 — Wallets, Transactions, and Monthly Summary
 
 > **Goal:** Make the app actually useful as a personal finance tracker.
 
