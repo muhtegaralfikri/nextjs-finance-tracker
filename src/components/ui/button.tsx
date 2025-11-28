@@ -13,12 +13,12 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClass: Record<ButtonVariant, string> = {
   primary:
-    "bg-emerald-500 text-slate-950 hover:bg-emerald-600 shadow-lg shadow-emerald-500/20",
+    "bg-emerald-500 text-slate-950 hover:bg-emerald-600 hover:shadow-emerald-500/30 hover:shadow-lg shadow-lg shadow-emerald-500/20",
   outline:
-    "border border-slate-700 text-slate-100 hover:border-emerald-400 bg-slate-950/40",
-  ghost: "text-slate-100 hover:bg-slate-800/50",
+    "border border-slate-700 text-slate-100 bg-slate-950/40 hover:border-emerald-400 hover:bg-[var(--btn-hover-outline)] hover:text-white hover:shadow-[0_0_0_1px_rgba(16,185,129,0.35)]",
+  ghost: "text-slate-100 hover:bg-[var(--btn-hover-ghost)] hover:text-white hover:shadow-[0_0_0_1px_rgba(255,255,255,0.12)]",
   danger:
-    "border border-rose-500/60 text-rose-200 hover:bg-rose-500/10 bg-slate-950/40",
+    "border border-rose-500/60 text-rose-200 bg-slate-950/40 hover:bg-[var(--btn-hover-danger)] hover:border-rose-400 hover:text-white hover:shadow-[0_0_0_1px_rgba(248,113,113,0.35)]",
 };
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
@@ -29,7 +29,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
     <button
       ref={ref}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-60",
+        "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition duration-150 disabled:opacity-60 hover:-translate-y-px",
         variantClass[variant],
         className
       )}

@@ -17,6 +17,13 @@ export type GoalItem = {
   note?: string | null;
 };
 
+const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
 export default function GoalsClient({ initialGoals }: { initialGoals: GoalItem[] }) {
   const [goals, setGoals] = useState<GoalItem[]>(initialGoals);
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(
@@ -45,6 +52,9 @@ export default function GoalsClient({ initialGoals }: { initialGoals: GoalItem[]
       currency: "IDR",
       maximumFractionDigits: 0,
     }).format(value || 0);
+  }
+  function formatDate(value: string) {
+    return dateFormatter.format(new Date(value));
   }
 
   async function handleCreate() {
@@ -220,7 +230,7 @@ export default function GoalsClient({ initialGoals }: { initialGoals: GoalItem[]
                     <p className="font-semibold text-white">{goal.name}</p>
                     {goal.deadline && (
                       <p className="text-xs text-slate-400">
-                        Deadline: {new Date(goal.deadline).toLocaleDateString()}
+                        Deadline: {formatDate(goal.deadline)}
                       </p>
                     )}
                     {goal.note && <p className="text-xs text-slate-400 mt-1">{goal.note}</p>}

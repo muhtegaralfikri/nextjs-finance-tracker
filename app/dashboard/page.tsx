@@ -191,7 +191,7 @@ export default async function DashboardPage() {
                       <p className="text-sm text-white">{goal.name}</p>
                       {goal.deadline && (
                         <span className="text-xs text-slate-400">
-                          {new Date(goal.deadline).toLocaleDateString()}
+                          {formatDate(goal.deadline)}
                         </span>
                       )}
                     </div>
@@ -244,7 +244,7 @@ export default async function DashboardPage() {
                   recentTransactions.map((tx) => (
                     <tr key={tx.id} className="border-t border-slate-800">
                       <td className="py-2 text-slate-300">
-                        {new Date(tx.date).toLocaleDateString()}
+                        {formatDate(tx.date)}
                       </td>
                       <td className="py-2">{tx.wallet.name}</td>
                       <td className="py-2">{tx.category.name}</td>
@@ -278,6 +278,17 @@ export default async function DashboardPage() {
       </div>
     </AppShell>
   );
+}
+
+const dateFormatter = new Intl.DateTimeFormat("id-ID", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+function formatDate(value: string | Date) {
+  return dateFormatter.format(new Date(value));
 }
 
 function formatCurrency(value: number) {
