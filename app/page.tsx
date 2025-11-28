@@ -1,65 +1,82 @@
-import Image from "next/image";
-
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
+    <main className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-emerald-900/30 text-slate-50">
+      <div className="mx-auto max-w-5xl px-6 py-16">
+        <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm text-emerald-300/80 uppercase tracking-[0.2em]">
+              Personal Finance Tracker
+            </p>
+            <h1 className="mt-2 text-4xl md:text-5xl font-semibold leading-tight">
+              Satu tempat untuk catat dompet, transaksi, dan ringkasan keuanganmu.
+            </h1>
+            <p className="mt-3 text-slate-300 max-w-2xl">
+              Dibangun dengan Next.js App Router + Prisma + Auth.js. Kelola banyak wallet,
+              kategori, dan lihat performa bulanan tanpa ribet.
+            </p>
+          </div>
+          <div className="flex gap-3">
             <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              href="/register"
+              className="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-5 py-3 shadow-lg shadow-emerald-500/30"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
+              Mulai Gratis
+            </a>
             <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              href="/login"
+              className="rounded-xl border border-slate-700 hover:border-emerald-400 px-5 py-3 text-slate-100"
             >
-              Learning
-            </a>{" "}
-            center.
+              Login
+            </a>
+          </div>
+        </header>
+
+        <section className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <FeatureCard
+            title="Multiple Wallet"
+            desc="Cash, bank, e-wallet, atau investasi. Pantau saldo dan jenisnya."
+          />
+          <FeatureCard
+            title="Transaksi + Filter"
+            desc="Catat income/expense, filter per tanggal, wallet, atau kategori."
+          />
+          <FeatureCard
+            title="Ringkasan Bulanan"
+            desc="Total saldo, income vs expense, dan breakdown kategori."
+          />
+        </section>
+
+        <section className="mt-12 rounded-2xl border border-slate-800 bg-slate-900/60 p-6">
+          <h2 className="text-xl font-semibold mb-2">Siap lanjut ke dashboard?</h2>
+          <p className="text-slate-300 mb-4">
+            Login untuk mengakses dashboard, wallets, dan transaksi. Kamu bisa menambah data
+            kapan saja, semuanya disimpan per user.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+          <div className="flex gap-3">
+            <a
+              href="/dashboard"
+              className="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-4 py-2"
+            >
+              Buka Dashboard
+            </a>
+            <a
+              href="/transactions"
+              className="rounded-lg border border-slate-700 px-4 py-2 text-slate-100 hover:border-emerald-400"
+            >
+              Lihat Transaksi
+            </a>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function FeatureCard({ title, desc }: { title: string; desc: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5 shadow-lg shadow-emerald-900/30">
+      <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
+      <p className="text-sm text-slate-300">{desc}</p>
     </div>
   );
 }
