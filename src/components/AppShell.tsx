@@ -34,15 +34,20 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const activeLabel =
     navItems.find((item) => isActive(pathname, item.href))?.label || "Finance";
-  const [theme, setTheme] = useState<"dark" | "light">(() => {
-    if (typeof window === "undefined") return "dark";
-    const stored = localStorage.getItem("theme");
-    return stored === "light" ? "light" : "dark";
-  });
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = localStorage.getItem("theme");
+    if (stored === "light" || stored === "dark") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTheme(stored);
+    }
+  }, []);
 
   function toggleTheme() {
     const next = theme === "dark" ? "light" : "dark";

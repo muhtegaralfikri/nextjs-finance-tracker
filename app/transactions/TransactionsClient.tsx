@@ -451,7 +451,9 @@ export default function TransactionsClient({
                         {formatCurrency(tx.amount)}
                       </span>
                     </td>
-                    <td className="py-2 text-slate-400">{tx.note}</td>
+                    <td className="py-2 text-slate-400 whitespace-pre-line pl-2">
+                      {tx.note}
+                    </td>
                     <td className="py-2 text-right space-x-2">
                       <Button
                         type="button"
@@ -538,7 +540,7 @@ export default function TransactionsClient({
                     </Button>
                   </div>
                 </div>
-                {tx.note && <p className="text-xs text-slate-400">{tx.note}</p>}
+                {tx.note && <p className="text-xs text-slate-400 mt-1">{tx.note}</p>}
               </div>
             ))
           )}
