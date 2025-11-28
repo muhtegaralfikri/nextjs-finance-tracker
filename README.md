@@ -461,12 +461,6 @@ This project is organized into **phases**.
 * Improve responsive layout (mobile-first)
 * Add loading & error states for all forms, actions, and tables
 * Use a consistent component library (e.g. shadcn/ui)
-* Deploy to:
-
-  * Vercel (Next.js app + API routes)
-  * External DB (Neon, Supabase, Railway, etc.)
-
----
 
 ## API Design Summary (for Implementation)
 
