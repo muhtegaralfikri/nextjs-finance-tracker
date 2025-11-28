@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { TransactionType } from "@prisma/client";
+import { Prisma, TransactionType } from "@prisma/client";
+import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureDefaultCategories } from "@/lib/categories";
@@ -7,11 +8,21 @@ import { getMonthRange, decimalToNumber } from "@/lib/finance";
 
 export const runtime = "nodejs";
 
+const transactionSchema = z.object({
+  walletId: z.string().cuid(),
+  categoryId: z.string().cuid(),
+  type: z.nativeEnum(TransactionType),
+  amount: z.coerce.number().positive(),
+  date: z.coerce.date(),
+  note: z.string().optional(),
+});
+
 export async function GET(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = session.user.id;
 
   const { searchParams } = new URL(request.url);
   const walletId = searchParams.get("walletId") || undefined;
@@ -24,7 +35,7 @@ export async function GET(request: Request) {
 
     const transactions = await prisma.transaction.findMany({
       where: {
-        userId: session.user.id,
+        userId,
         walletId,
         categoryId,
         date: {
@@ -59,32 +70,27 @@ export async function POST(request: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = session.user.id;
 
-  await ensureDefaultCategories(session.user.id);
+  await ensureDefaultCategories(userId);
 
   try {
-    const body = await request.json();
-    const { walletId, categoryId, type, amount, date, note } = body;
-
-    if (!walletId || !categoryId || !type || !amount || !date) {
+    const json = await request.json();
+    const parsed = transactionSchema.safeParse(json);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "walletId, categoryId, type, amount, dan date wajib diisi" },
+        { error: parsed.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
 
-    if (!Object.values(TransactionType).includes(type)) {
-      return NextResponse.json(
-        { error: "Jenis transaksi tidak valid" },
-        { status: 400 }
-      );
-    }
+    const { walletId, categoryId, type, amount, date, note } = parsed.data;
 
     const wallet = await prisma.wallet.findFirst({
-      where: { id: walletId, userId: session.user.id },
+      where: { id: walletId, userId },
     });
     const category = await prisma.category.findFirst({
-      where: { id: categoryId, userId: session.user.id },
+      where: { id: categoryId, userId },
     });
 
     if (!wallet || !category) {
@@ -101,32 +107,42 @@ export async function POST(request: Request) {
       );
     }
 
-    const transactionDate = new Date(date);
-    if (Number.isNaN(transactionDate.getTime())) {
-      return NextResponse.json(
-        { error: "Format tanggal tidak valid" },
-        { status: 400 }
-      );
-    }
+    const decimalAmount = new Prisma.Decimal(amount);
 
-    const transaction = await prisma.transaction.create({
-      data: {
-        walletId,
-        categoryId,
-        type,
-        amount: Number(amount),
-        date: transactionDate,
-        note,
-        userId: session.user.id,
-      },
-      include: {
-        wallet: true,
-        category: true,
-      },
+    const transaction = await prisma.$transaction(async (tx) => {
+      const created = await tx.transaction.create({
+        data: {
+          walletId,
+          categoryId,
+          type,
+          amount: decimalAmount,
+          date,
+          note,
+          userId,
+        },
+        include: {
+          wallet: true,
+          category: true,
+        },
+      });
+
+      const balanceChange =
+        type === TransactionType.INCOME ? decimalAmount : decimalAmount.negated();
+
+      await tx.wallet.update({
+        where: { id: walletId },
+        data: {
+          currentBalance: {
+            increment: balanceChange,
+          },
+        },
+      });
+
+      return created;
     });
 
     return NextResponse.json(
-      { ...transaction, amount: Number(transaction.amount) },
+      { ...transaction, amount: decimalToNumber(transaction.amount) },
       { status: 201 }
     );
   } catch (error) {

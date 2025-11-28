@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { WalletType } from "@prisma/client";
+import { Prisma, WalletType } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { decimalToNumber, getWalletsWithBalance } from "@/lib/finance";
@@ -45,12 +45,15 @@ export async function POST(request: Request) {
       );
     }
 
+    const parsedInitial = new Prisma.Decimal(initialBalance ?? 0);
+
     const wallet = await prisma.wallet.create({
       data: {
         name,
         type,
         currency: currency || "IDR",
-        initialBalance: Number(initialBalance) || 0,
+        initialBalance: parsedInitial,
+        currentBalance: parsedInitial,
         userId: session.user.id,
       },
     });
@@ -59,7 +62,7 @@ export async function POST(request: Request) {
       {
         ...wallet,
         initialBalance: decimalToNumber(wallet.initialBalance),
-        balance: Number(initialBalance) || 0,
+        balance: decimalToNumber(wallet.currentBalance),
       },
       { status: 201 }
     );

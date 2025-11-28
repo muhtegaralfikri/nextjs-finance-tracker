@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
-import { TransactionType } from "@prisma/client";
+import { Prisma, TransactionType } from "@prisma/client";
+import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { decimalToNumber } from "@/lib/finance";
 
 export const runtime = "nodejs";
+
+const transactionUpdateSchema = z.object({
+  walletId: z.string().cuid().optional(),
+  categoryId: z.string().cuid().optional(),
+  type: z.nativeEnum(TransactionType).optional(),
+  amount: z.coerce.number().positive().optional(),
+  date: z.coerce.date().optional(),
+  note: z.string().optional(),
+});
 
 export async function PATCH(
   request: Request,
@@ -25,14 +35,15 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-    const { walletId, categoryId, type, amount, date, note } = body;
-
-    if (type && !Object.values(TransactionType).includes(type)) {
+    const parsed = transactionUpdateSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Jenis transaksi tidak valid" },
+        { error: parsed.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
+
+    const { walletId, categoryId, type, amount, date, note } = parsed.data;
 
     if (walletId) {
       const wallet = await prisma.wallet.findFirst({
@@ -46,13 +57,7 @@ export async function PATCH(
       }
     }
 
-    const parsedDate = date ? new Date(date) : transaction.date;
-    if (parsedDate && Number.isNaN(parsedDate.getTime())) {
-      return NextResponse.json(
-        { error: "Format tanggal tidak valid" },
-        { status: 400 }
-      );
-    }
+    const parsedDate = date ?? transaction.date;
 
     const targetType = (type ?? transaction.type) as TransactionType;
     let targetCategoryId = transaction.categoryId;
@@ -85,21 +90,59 @@ export async function PATCH(
       }
     }
 
-    const updated = await prisma.transaction.update({
-      where: { id: transaction.id },
-      data: {
-        walletId: walletId ?? transaction.walletId,
-        categoryId: targetCategoryId,
-        type: targetType,
-        amount:
-          amount !== undefined ? Number(amount) : decimalToNumber(transaction.amount),
-        date: parsedDate,
-        note: note ?? transaction.note,
-      },
-      include: { wallet: true, category: true },
+    const nextAmountDecimal =
+      amount !== undefined ? new Prisma.Decimal(amount) : new Prisma.Decimal(transaction.amount);
+    const nextWalletId = walletId ?? transaction.walletId;
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const result = await tx.transaction.update({
+        where: { id: transaction.id },
+        data: {
+          walletId: nextWalletId,
+          categoryId: targetCategoryId,
+          type: targetType,
+          amount: nextAmountDecimal,
+          date: parsedDate,
+          note: note ?? transaction.note,
+        },
+        include: { wallet: true, category: true },
+      });
+
+      const previousChange =
+        transaction.type === TransactionType.INCOME
+          ? new Prisma.Decimal(transaction.amount)
+          : new Prisma.Decimal(transaction.amount).negated();
+      const nextChange =
+        targetType === TransactionType.INCOME
+          ? nextAmountDecimal
+          : nextAmountDecimal.negated();
+
+      if (transaction.walletId === nextWalletId) {
+        const delta = nextChange.minus(previousChange);
+        if (!delta.isZero()) {
+          await tx.wallet.update({
+            where: { id: nextWalletId },
+            data: { currentBalance: { increment: delta } },
+          });
+        }
+      } else {
+        await tx.wallet.update({
+          where: { id: transaction.walletId },
+          data: { currentBalance: { increment: previousChange.negated() } },
+        });
+        await tx.wallet.update({
+          where: { id: nextWalletId },
+          data: { currentBalance: { increment: nextChange } },
+        });
+      }
+
+      return result;
     });
 
-    return NextResponse.json({ ...updated, amount: Number(updated.amount) });
+    return NextResponse.json({
+      ...updated,
+      amount: decimalToNumber(updated.amount),
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json(
@@ -126,6 +169,19 @@ export async function DELETE(
     return NextResponse.json({ error: "Transaksi tidak ditemukan" }, { status: 404 });
   }
 
-  await prisma.transaction.delete({ where: { id: transaction.id } });
+  await prisma.$transaction(async (tx) => {
+    const reverseChange =
+      transaction.type === TransactionType.INCOME
+        ? new Prisma.Decimal(transaction.amount).negated()
+        : new Prisma.Decimal(transaction.amount);
+
+    await tx.wallet.update({
+      where: { id: transaction.walletId },
+      data: { currentBalance: { increment: reverseChange } },
+    });
+
+    await tx.transaction.delete({ where: { id: transaction.id } });
+  });
+
   return NextResponse.json({ success: true });
 }
