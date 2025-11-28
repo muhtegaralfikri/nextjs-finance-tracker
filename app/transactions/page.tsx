@@ -74,10 +74,10 @@ export default async function TransactionsPage() {
     <main className="min-h-screen bg-slate-950 text-slate-100">
       <div className="mx-auto max-w-6xl px-4 py-8 space-y-4">
         <div>
-          <p className="text-sm text-slate-400">Phase 3</p>
+          <p className="text-sm text-slate-400">Phase 5</p>
           <h1 className="text-3xl font-semibold">Transaksi</h1>
           <p className="text-slate-400 text-sm mt-1">
-            Catat pemasukan/pengeluaran, filter per tanggal, wallet, dan kategori.
+            Catat pemasukan/pengeluaran, filter per tanggal, wallet, dan kategori dengan status loading/error yang jelas.
           </p>
         </div>
 

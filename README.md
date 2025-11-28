@@ -456,11 +456,11 @@ This project is organized into **phases**.
 
 ---
 
-### 🎨 Phase 5 — UI Polish, UX, and Deployment
+### ✅ Phase 5 — UI Polish, UX, and Deployment
 
-* Improve responsive layout (mobile-first)
-* Add loading & error states for all forms, actions, and tables
-* Use a consistent component library (e.g. shadcn/ui)
+* Konsisten UI kit (button, input, select, card, alert, spinner) di `src/components/ui`
+* Loading + error state di wallets, budgets/goals, dan transactions (form, filter, CRUD)
+* Layout responsif mobile-first, copy header diperbarui ke Phase 5
 
 ## API Design Summary (for Implementation)
 

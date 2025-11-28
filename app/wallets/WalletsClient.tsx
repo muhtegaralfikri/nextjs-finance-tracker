@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import { WalletType } from "@prisma/client";
+import Alert from "@/components/ui/alert";
+import Button from "@/components/ui/button";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Input from "@/components/ui/input";
+import Select from "@/components/ui/select";
+import Spinner from "@/components/ui/spinner";
 
 export type WalletClientData = {
   id: string;
@@ -34,7 +40,9 @@ export default function WalletsClient({
 
   const [wallets, setWallets] = useState<WalletClientData[]>(initialWallets);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(
+    null
+  );
   const [form, setForm] = useState<WalletFormState>({
     name: "",
     type: WalletType.CASH,
@@ -58,31 +66,42 @@ export default function WalletsClient({
   }
 
   async function handleCreate() {
-    setLoading(true);
-    setMessage(null);
-    const res = await fetch("/api/wallets", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: form.name,
-        type: form.type,
-        currency: form.currency,
-        initialBalance: Number(form.initialBalance) || 0,
-      }),
-    });
-
-    setLoading(false);
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => null);
-      setMessage(data?.error || "Gagal membuat wallet");
+    if (!form.name.trim()) {
+      setFeedback({ type: "error", message: "Nama wallet wajib diisi" });
       return;
     }
 
-    const wallet: WalletClientData = await res.json();
-    setWallets((prev) => [{ ...wallet, balance: wallet.initialBalance }, ...prev]);
-    setForm({ name: "", type: WalletType.CASH, currency: "IDR", initialBalance: "0" });
-    setMessage("Wallet berhasil dibuat");
+    setLoading(true);
+    setFeedback(null);
+
+    try {
+      const res = await fetch("/api/wallets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          type: form.type,
+          currency: form.currency,
+          initialBalance: Number(form.initialBalance) || 0,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setFeedback({ type: "error", message: data?.error || "Gagal membuat wallet" });
+        return;
+      }
+
+      const wallet: WalletClientData = await res.json();
+      setWallets((prev) => [{ ...wallet, balance: wallet.initialBalance }, ...prev]);
+      setForm({ name: "", type: WalletType.CASH, currency: "IDR", initialBalance: "0" });
+      setFeedback({ type: "success", message: "Wallet berhasil dibuat" });
+    } catch (error) {
+      console.error(error);
+      setFeedback({ type: "error", message: "Tidak bisa terhubung ke server" });
+    } finally {
+      setLoading(false);
+    }
   }
 
   function startEdit(wallet: WalletClientData) {
@@ -98,86 +117,112 @@ export default function WalletsClient({
   async function handleSaveEdit() {
     if (!editingId) return;
     setLoading(true);
-    setMessage(null);
+    setFeedback(null);
 
-    const res = await fetch(`/api/wallets/${editingId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: editFields.name,
-        type: editFields.type,
-        currency: editFields.currency,
-        initialBalance: Number(editFields.initialBalance) || 0,
-      }),
-    });
+    try {
+      const res = await fetch(`/api/wallets/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editFields.name,
+          type: editFields.type,
+          currency: editFields.currency,
+          initialBalance: Number(editFields.initialBalance) || 0,
+        }),
+      });
 
-    setLoading(false);
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setFeedback({ type: "error", message: data?.error || "Gagal memperbarui wallet" });
+        return;
+      }
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => null);
-      setMessage(data?.error || "Gagal memperbarui wallet");
-      return;
+      const updated = await res.json();
+      setWallets((prev) =>
+        prev.map((w) =>
+          w.id === editingId
+            ? {
+                ...w,
+                ...updated,
+                balance:
+                  (updated.balance ?? w.balance) ||
+                  Number(updated.initialBalance ?? w.initialBalance),
+              }
+            : w
+        )
+      );
+      setEditingId(null);
+      setFeedback({ type: "success", message: "Wallet diperbarui" });
+    } catch (error) {
+      console.error(error);
+      setFeedback({ type: "error", message: "Tidak bisa terhubung ke server" });
+    } finally {
+      setLoading(false);
     }
-
-    const updated = await res.json();
-    setWallets((prev) =>
-      prev.map((w) =>
-        w.id === editingId
-          ? {
-              ...w,
-              ...updated,
-              balance:
-                (updated.balance ?? w.balance) ||
-                Number(updated.initialBalance ?? w.initialBalance),
-            }
-          : w
-      )
-    );
-    setEditingId(null);
-    setMessage("Wallet diperbarui");
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Hapus wallet ini?")) return;
     setLoading(true);
-    setMessage(null);
+    setFeedback(null);
 
-    const res = await fetch(`/api/wallets/${id}`, { method: "DELETE" });
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/wallets/${id}`, { method: "DELETE" });
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => null);
-      setMessage(data?.error || "Gagal menghapus wallet");
-      return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setFeedback({ type: "error", message: data?.error || "Gagal menghapus wallet" });
+        return;
+      }
+
+      setWallets((prev) => prev.filter((w) => w.id !== id));
+      setFeedback({ type: "success", message: "Wallet dihapus" });
+    } catch (error) {
+      console.error(error);
+      setFeedback({ type: "error", message: "Tidak bisa terhubung ke server" });
+    } finally {
+      setLoading(false);
     }
-
-    setWallets((prev) => prev.filter((w) => w.id !== id));
-    setMessage("Wallet dihapus");
   }
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-        <h2 className="text-lg font-semibold text-white mb-3">Tambah Wallet</h2>
-        {message && (
-          <p className="mb-3 text-sm text-emerald-300">
-            {message}
-          </p>
+      <Card>
+        <CardHeader className="flex flex-col gap-1">
+          <CardTitle>Tambah Wallet</CardTitle>
+          <CardDescription>
+            Kelola semua dompet (cash, bank, e-wallet) dengan saldo awal yang jelas.
+          </CardDescription>
+        </CardHeader>
+
+        {feedback && (
+          <Alert
+            variant={feedback.type === "success" ? "success" : "error"}
+            className="mb-3"
+          >
+            {feedback.message}
+          </Alert>
         )}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+        <form
+          className="grid grid-cols-1 md:grid-cols-2 gap-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleCreate();
+          }}
+        >
           <div className="space-y-2">
             <label className="text-sm text-slate-300">Nama</label>
-            <input
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+            <Input
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               placeholder="contoh: Bank Jago"
+              autoComplete="off"
             />
           </div>
           <div className="space-y-2">
             <label className="text-sm text-slate-300">Jenis</label>
-            <select
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+            <Select
               value={form.type}
               onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as WalletType }))}
             >
@@ -186,38 +231,37 @@ export default function WalletsClient({
                   {opt.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="space-y-2">
             <label className="text-sm text-slate-300">Mata uang</label>
-            <input
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+            <Input
               value={form.currency}
               onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
             />
           </div>
           <div className="space-y-2">
             <label className="text-sm text-slate-300">Saldo awal</label>
-            <input
+            <Input
               type="number"
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
               value={form.initialBalance}
               onChange={(e) => setForm((f) => ({ ...f, initialBalance: e.target.value }))}
             />
           </div>
-        </div>
-        <button
-          onClick={handleCreate}
-          disabled={loading}
-          className="mt-4 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2 text-sm disabled:opacity-60"
-        >
-          {loading ? "Memproses..." : "Simpan"}
-        </button>
-      </div>
+          <div className="md:col-span-2">
+            <Button type="submit" loading={loading}>
+              Simpan Wallet
+            </Button>
+          </div>
+        </form>
+      </Card>
 
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold text-white">Daftar Wallet</h2>
+      <Card aria-busy={loading}>
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-3">
+          <div>
+            <CardTitle>Daftar Wallet</CardTitle>
+            <CardDescription>Saldo realtime = saldo awal + transaksi.</CardDescription>
+          </div>
           <span className="text-xs text-slate-500">{wallets.length} wallet</span>
         </div>
         {wallets.length === 0 ? (
@@ -225,10 +269,7 @@ export default function WalletsClient({
         ) : (
           <div className="space-y-3">
             {wallets.map((wallet) => (
-              <div
-                key={wallet.id}
-                className="rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3"
-              >
+              <Card key={wallet.id} className="bg-slate-950/60 border-slate-800">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                   <div>
                     <p className="text-white font-semibold">{wallet.name}</p>
@@ -240,32 +281,33 @@ export default function WalletsClient({
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
+                    <Button
+                      type="button"
+                      variant="outline"
                       onClick={() => startEdit(wallet)}
-                      className="rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-200 hover:border-emerald-400"
+                      className="px-3 py-1"
                     >
                       Edit
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
                       onClick={() => handleDelete(wallet.id)}
-                      className="rounded-lg border border-rose-500/60 px-3 py-1 text-xs text-rose-200 hover:bg-rose-500/10"
+                      className="px-3 py-1"
+                      loading={loading && editingId === wallet.id}
                     >
                       Hapus
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
                 {editingId === wallet.id && (
                   <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input
-                      className="w-full rounded-lg bg-slate-900 border border-slate-800 px-3 py-2 text-sm text-white"
+                    <Input
                       value={editFields.name}
-                      onChange={(e) =>
-                        setEditFields((f) => ({ ...f, name: e.target.value }))
-                      }
+                      onChange={(e) => setEditFields((f) => ({ ...f, name: e.target.value }))}
                     />
-                    <select
-                      className="w-full rounded-lg bg-slate-900 border border-slate-800 px-3 py-2 text-sm text-white"
+                    <Select
                       value={editFields.type}
                       onChange={(e) =>
                         setEditFields((f) => ({ ...f, type: e.target.value as WalletType }))
@@ -276,44 +318,44 @@ export default function WalletsClient({
                           {opt.label}
                         </option>
                       ))}
-                    </select>
-                    <input
-                      className="w-full rounded-lg bg-slate-900 border border-slate-800 px-3 py-2 text-sm text-white"
+                    </Select>
+                    <Input
                       value={editFields.currency}
                       onChange={(e) =>
                         setEditFields((f) => ({ ...f, currency: e.target.value }))
                       }
                     />
-                    <input
+                    <Input
                       type="number"
-                      className="w-full rounded-lg bg-slate-900 border border-slate-800 px-3 py-2 text-sm text-white"
                       value={editFields.initialBalance}
                       onChange={(e) =>
                         setEditFields((f) => ({ ...f, initialBalance: e.target.value }))
                       }
                     />
-                    <div className="md:col-span-2 flex gap-2">
-                      <button
-                        onClick={handleSaveEdit}
-                        disabled={loading}
-                        className="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold px-4 py-2 text-sm disabled:opacity-60"
-                      >
+                    <div className="md:col-span-2 flex flex-wrap gap-2">
+                      <Button type="button" onClick={handleSaveEdit} loading={loading}>
                         Simpan perubahan
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
                         onClick={() => setEditingId(null)}
-                        className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200"
                       >
                         Batal
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
-              </div>
+              </Card>
             ))}
           </div>
         )}
-      </div>
+        {loading && wallets.length > 0 && (
+          <div className="mt-3 flex items-center gap-2 text-sm text-slate-400">
+            <Spinner size="sm" /> Memproses aksi...
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
