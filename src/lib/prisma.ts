@@ -1,40 +1,13 @@
 // src/lib/prisma.ts
 import { PrismaClient } from "@prisma/client";
-import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
-const globalForPrisma = globalThis as unknown as {
-  prisma?: PrismaClient;
-};
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-// Ambil konfigurasi dari DATABASE_URL; tidak ada fallback hardcoded untuk menghindari kredensial bocor
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
+if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL tidak terdefinisi. Set di .env atau environment.");
 }
 
-// Parse connection string untuk mendapatkan konfigurasi
-const url = new URL(connectionString);
-const config = {
-  host: url.hostname,
-  port: parseInt(url.port) || 3306,
-  user: url.username,
-  password: url.password,
-  database: url.pathname.substring(1), // Remove leading slash
-  // Konfigurasi tambahan untuk mariadb
-  connectTimeout: 60000,
-  acquireTimeout: 60000,
-  timeout: 60000,
-};
-
-// Prisma adapter will handle pooling internally from the config
-const adapter = new PrismaMariaDb(config);
-
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    adapter,
-  });
+export const prisma = globalForPrisma.prisma ?? new PrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 
 type NavItem = {
   href: string;
@@ -26,9 +26,27 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const activeLabel =
     navItems.find((item) => isActive(pathname, item.href))?.label || "Finance";
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    if (typeof window === "undefined") return "dark";
+    const stored = localStorage.getItem("theme");
+    return stored === "light" ? "light" : "dark";
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
+  function toggleTheme() {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("theme", next);
+    }
+    document.documentElement.dataset.theme = next;
+  }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen" style={{ background: "var(--bg-app)", color: "var(--text-primary)" }}>
       <div className="flex min-h-screen">
         <aside className="hidden lg:flex w-64 flex-col border-r border-slate-900/80 bg-slate-950/90 backdrop-blur sticky top-0 h-screen">
           <Link href="/dashboard" className="px-5 py-6 flex items-center gap-3">
@@ -98,6 +116,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 >
                   Dashboard
                 </Link>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="rounded-xl border border-slate-800 px-3 py-2 text-slate-300 hover:border-emerald-400/60 transition"
+                >
+                  {theme === "dark" ? "Mode terang" : "Mode gelap"}
+                </button>
               </div>
             </div>
           </header>

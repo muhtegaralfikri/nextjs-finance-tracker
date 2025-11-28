@@ -158,8 +158,9 @@ Important files:
 Create a `.env` file in the project root:
 
 ```env
-# Development DB (SQLite)
-DATABASE_URL="file:./dev.db"
+# Primary database (Neon/PostgreSQL)
+# Example: postgres://user:password@ep-neon-host.aws.neon.tech/neondb?sslmode=require
+DATABASE_URL="postgres://..."
 
 # Auth.js / NextAuth v5 secret (required)
 AUTH_SECRET="your-random-secret-here"
@@ -167,13 +168,13 @@ AUTH_SECRET="your-random-secret-here"
 
 Tips:
 
-* For development, you can generate a secret with:
+* Generate a secret with:
 
   ```bash
   npx auth secret
   ```
 
-* For production, set these in your hosting provider’s environment settings and switch `DATABASE_URL` to a real Postgres/MySQL URL.
+* If you need a local DB, you can point `DATABASE_URL` to a local Postgres instance (e.g. `postgres://postgres:postgres@localhost:5432/finance`).
 
 ---
 
