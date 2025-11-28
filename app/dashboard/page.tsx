@@ -1,4 +1,3 @@
-// src/app/dashboard/page.tsx
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -45,6 +44,7 @@ export default async function DashboardPage() {
           </p>
         </header>
 
+        {/* --- STATS SECTION --- */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCard
             title="Total Saldo"
@@ -68,6 +68,7 @@ export default async function DashboardPage() {
           />
         </section>
 
+        {/* --- WALLETS & CATEGORIES SECTION --- */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
             <div className="flex items-center justify-between mb-3">
@@ -132,6 +133,7 @@ export default async function DashboardPage() {
           </div>
         </section>
 
+        {/* --- BUDGETS & GOALS SECTION --- */}
         <section className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
             <div className="flex items-center justify-between mb-3">
@@ -212,6 +214,7 @@ export default async function DashboardPage() {
           </div>
         </section>
 
+        {/* --- TRANSACTIONS SECTION (UPDATED) --- */}
         <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">Transaksi Terbaru</h2>
@@ -222,58 +225,95 @@ export default async function DashboardPage() {
               Lihat Semua →
             </a>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-slate-400">
-                  <th className="py-2">Tanggal</th>
-                  <th className="py-2">Wallet</th>
-                  <th className="py-2">Kategori</th>
-                  <th className="py-2">Tipe</th>
-                  <th className="py-2 text-right">Jumlah</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTransactions.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-4 text-center text-slate-400">
-                      Belum ada transaksi.
-                    </td>
-                  </tr>
-                ) : (
-                  recentTransactions.map((tx) => (
-                    <tr key={tx.id} className="border-t border-slate-800">
-                      <td className="py-2 text-slate-300">
-                        {formatDate(tx.date)}
-                      </td>
-                      <td className="py-2">{tx.wallet.name}</td>
-                      <td className="py-2">{tx.category.name}</td>
-                      <td className="py-2">
-                        <span
-                          className={`px-2 py-1 text-xs rounded-full ${
-                            tx.type === "INCOME"
-                              ? "bg-emerald-500/10 text-emerald-300"
-                              : "bg-rose-500/10 text-rose-300"
-                          }`}
-                        >
-                          {tx.type}
-                        </span>
-                      </td>
-                      <td className="py-2 text-right font-semibold">
-                        <span
-                          className={
-                            tx.type === "INCOME" ? "text-emerald-300" : "text-rose-300"
-                          }
-                        >
-                          {formatCurrency(decimalToNumber(tx.amount))}
-                        </span>
-                      </td>
+
+          {recentTransactions.length === 0 ? (
+            <p className="py-4 text-center text-sm text-slate-400">
+              Belum ada transaksi.
+            </p>
+          ) : (
+            <>
+              {/* 1. TAMPILAN DESKTOP (TABLE) */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-slate-400 border-b border-slate-800">
+                      <th className="py-2 px-2">Tanggal</th>
+                      <th className="py-2 px-2">Wallet</th>
+                      <th className="py-2 px-2">Kategori</th>
+                      <th className="py-2 px-2">Tipe</th>
+                      <th className="py-2 px-2 text-right">Jumlah</th>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {recentTransactions.map((tx) => (
+                      <tr key={tx.id} className="border-b border-slate-800 last:border-0 hover:bg-slate-800/30 transition-colors">
+                        <td className="py-2 px-2 text-slate-300">
+                          {formatDate(tx.date)}
+                        </td>
+                        <td className="py-2 px-2">{tx.wallet.name}</td>
+                        <td className="py-2 px-2">{tx.category.name}</td>
+                        <td className="py-2 px-2">
+                          <span
+                            className={`px-2 py-1 text-xs rounded-full ${
+                              tx.type === "INCOME"
+                                ? "bg-emerald-500/10 text-emerald-300"
+                                : "bg-rose-500/10 text-rose-300"
+                            }`}
+                          >
+                            {tx.type}
+                          </span>
+                        </td>
+                        <td className="py-2 px-2 text-right font-semibold">
+                          <span
+                            className={
+                              tx.type === "INCOME" ? "text-emerald-300" : "text-rose-300"
+                            }
+                          >
+                            {formatCurrency(decimalToNumber(tx.amount))}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 2. TAMPILAN MOBILE (STACKED LIST / CARD) */}
+              <div className="sm:hidden space-y-3">
+                {recentTransactions.map((tx) => (
+                  <div
+                    key={tx.id}
+                    className="flex flex-col gap-1 rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-400">
+                        {formatDate(tx.date)} • {tx.wallet.name}
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 text-[10px] rounded-full uppercase tracking-wide ${
+                          tx.type === "INCOME"
+                            ? "bg-emerald-500/10 text-emerald-300"
+                            : "bg-rose-500/10 text-rose-300"
+                        }`}
+                      >
+                        {tx.type}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <p className="font-medium text-white">{tx.category.name}</p>
+                      <p
+                        className={`font-semibold ${
+                          tx.type === "INCOME" ? "text-emerald-400" : "text-rose-400"
+                        }`}
+                      >
+                        {formatCurrency(decimalToNumber(tx.amount))}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </section>
       </div>
     </AppShell>
