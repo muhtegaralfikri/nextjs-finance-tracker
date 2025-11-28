@@ -4,6 +4,7 @@
 import { FormEvent, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -37,7 +38,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950">
+    <div
+      className="relative min-h-screen flex items-center justify-center"
+      style={{ background: "var(--bg-app)", color: "var(--text-primary)" }}
+    >
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl">
         <h1 className="text-2xl font-semibold text-white mb-2">
           Finance Tracker Login

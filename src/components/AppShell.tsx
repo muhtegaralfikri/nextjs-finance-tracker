@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode } from "react";
 import {
   LayoutDashboard,
-  Moon,
   ReceiptText,
-  Sun,
   Target,
   WalletCards,
 } from "lucide-react";
+import ThemeToggle from "./ThemeToggle";
 
 type NavItem = {
   href: string;
@@ -34,29 +33,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const activeLabel =
     navItems.find((item) => isActive(pathname, item.href))?.label || "Finance";
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const stored = localStorage.getItem("theme");
-    if (stored === "light" || stored === "dark") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setTheme(stored);
-    }
-  }, []);
-
-  function toggleTheme() {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("theme", next);
-    }
-    document.documentElement.dataset.theme = next;
-  }
 
   return (
     <div className="min-h-screen" style={{ background: "var(--bg-app)", color: "var(--text-primary)" }}>
@@ -122,27 +98,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   <span aria-hidden>＋</span>
                   <span>Tambah transaksi</span>
                 </Link>
-              <Link
-                href="/dashboard"
-                className="rounded-xl border border-slate-800 px-3 py-2 text-slate-300 hover:border-emerald-400/60"
-              >
-                Dashboard
-              </Link>
-              <button
-                type="button"
-                onClick={toggleTheme}
-                className="rounded-xl border border-slate-800 px-3 py-2 text-slate-300 hover:border-emerald-400/60 transition"
-                aria-label={theme === "dark" ? "Mode terang" : "Mode gelap"}
-              >
-                {theme === "dark" ? (
-                  <Sun className="h-5 w-5 text-white" aria-hidden />
-                ) : (
-                  <Moon className="h-5 w-5 text-slate-900" aria-hidden />
-                )}
-              </button>
+                <Link
+                  href="/dashboard"
+                  className="rounded-xl border border-slate-800 px-3 py-2 text-slate-300 hover:border-emerald-400/60"
+                >
+                  Dashboard
+                </Link>
+                <ThemeToggle />
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
 
           <main className="flex-1 pb-24 lg:pb-10">{children}</main>
         </div>

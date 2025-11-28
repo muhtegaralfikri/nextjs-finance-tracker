@@ -1,7 +1,24 @@
+import ThemeToggle from "@/components/ThemeToggle";
+
 export default function Home() {
   return (
-    <main className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-emerald-900/30 text-slate-50">
-      <div className="mx-auto max-w-5xl px-6 py-16">
+    <main
+      className="relative min-h-screen overflow-hidden"
+      style={{ background: "var(--bg-app)", color: "var(--text-primary)" }}
+    >
+      <div
+        className="pointer-events-none absolute inset-0 opacity-80"
+        aria-hidden
+        style={{
+          background:
+            "radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.16), transparent 35%), radial-gradient(circle at 80% 10%, rgba(94, 234, 212, 0.14), transparent 30%), linear-gradient(135deg, rgba(15, 23, 42, 0.7), transparent 60%)",
+        }}
+      />
+
+      <div className="relative mx-auto max-w-5xl px-6 py-16">
+        <div className="flex justify-end">
+          <ThemeToggle />
+        </div>
         <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm text-emerald-300/80 uppercase tracking-[0.2em]">
