@@ -110,22 +110,22 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   <span aria-hidden>＋</span>
                   <span>Tambah transaksi</span>
                 </Link>
-                <Link
-                  href="/dashboard"
-                  className="rounded-xl border border-slate-800 px-3 py-2 text-slate-300 hover:border-emerald-400/60"
-                >
-                  Dashboard
-                </Link>
-                <button
-                  type="button"
-                  onClick={toggleTheme}
-                  className="rounded-xl border border-slate-800 px-3 py-2 text-slate-300 hover:border-emerald-400/60 transition"
-                >
-                  {theme === "dark" ? "Mode terang" : "Mode gelap"}
-                </button>
-              </div>
+              <Link
+                href="/dashboard"
+                className="rounded-xl border border-slate-800 px-3 py-2 text-slate-300 hover:border-emerald-400/60"
+              >
+                Dashboard
+              </Link>
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="rounded-xl border border-slate-800 px-3 py-2 text-slate-300 hover:border-emerald-400/60 transition"
+              >
+                {theme === "dark" ? "Mode terang" : "Mode gelap"}
+              </button>
             </div>
-          </header>
+          </div>
+        </header>
 
           <main className="flex-1 pb-24 lg:pb-10">{children}</main>
         </div>

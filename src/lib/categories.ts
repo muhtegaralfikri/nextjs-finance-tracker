@@ -14,6 +14,16 @@ const defaultCategories: Array<{ name: string; type: CategoryType }> = [
 ];
 
 export async function ensureDefaultCategories(userId: string) {
+  const userExists = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true },
+  });
+
+  if (!userExists) {
+    // Session id tidak valid terhadap database yang baru → biarkan caller menangani
+    return;
+  }
+
   const existingCount = await prisma.category.count({ where: { userId } });
   if (existingCount > 0) return;
 
