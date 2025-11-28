@@ -12,7 +12,8 @@ You can:
 - Register & log in with email/password
 - Manage multiple wallets (cash, bank, e-wallet, investments)
 - Record income and expenses by category
-- (Planned in Phase 3) View monthly summaries, charts, budgets, and more
+- View monthly summaries & charts
+- Set budgets per category and savings goals
 
 > This project is designed as a portfolio app and a playground for modern fullstack patterns.
 
@@ -39,8 +40,12 @@ Current structure (after Phase 2) looks like this:
 │  │  ├─ auth/
 │  │  │  └─ [...nextauth]/route.ts   # Auth.js handlers
 │  │  └─ register/route.ts           # User registration endpoint
+│  │  └─ budgets/                    # Budgets API (Phase 4)
+│  │  └─ goals/                      # Goals API (Phase 4)
 │  ├─ dashboard/
 │  │  └─ page.tsx                    # Protected dashboard
+│  ├─ budgets/
+│  │  └─ page.tsx                    # Budgets + savings goals UI (Phase 4)
 │  ├─ login/
 │  │  └─ page.tsx                    # Login page
 │  ├─ register/
@@ -51,7 +56,9 @@ Current structure (after Phase 2) looks like this:
 │  └─ page.tsx                       # Landing / index page
 ├─ src/
 │  ├─ lib/
-│  │  └─ prisma.ts                   # PrismaClient helper (singleton)
+│  │  ├─ prisma.ts                   # PrismaClient helper (singleton)
+│  │  ├─ budgets.ts                  # Budget helpers (Phase 4)
+│  │  ├─ goals.ts                    # Goal helpers (Phase 4)
 │  ├─ types/                         # Shared TypeScript types (optional)
 │  └─ auth.ts                        # Auth.js / NextAuth configuration
 ├─ prisma/
@@ -419,7 +426,7 @@ This project is organized into **phases**.
 
 ---
 
-### 🎯 Phase 4 — Budgets & Savings Goals (Optional)
+### ✅ Phase 4 — Budgets & Savings Goals
 
 **Budgets**
 
@@ -427,11 +434,25 @@ This project is organized into **phases**.
 * Show progress:
 
   * `spent / budget` (%) and highlight when over budget.
+* API:
+
+  * `GET /api/budgets?month=YYYY-MM`
+  * `POST /api/budgets`
+  * `PATCH /api/budgets/[id]`
+  * `DELETE /api/budgets/[id]`
+* UI: `app/budgets/page.tsx` (create/edit/delete + month filter)
 
 **Savings goals**
 
 * New model: `Goal` (userId, name, targetAmount, currentAmount, deadline)
 * Optionally link certain transactions to a specific goal.
+* API:
+
+  * `GET /api/goals`
+  * `POST /api/goals`
+  * `PATCH /api/goals/[id]`
+  * `DELETE /api/goals/[id]`
+* UI: `app/budgets/page.tsx` (list + CRUD)
 
 ---
 
@@ -471,6 +492,20 @@ This project is organized into **phases**.
 **Summary**
 
 * `GET /api/summary/monthly?month=YYYY-MM` — monthly summary for dashboard
+
+**Budgets**
+
+* `GET /api/budgets?month=YYYY-MM` — list budgets with progress
+* `POST /api/budgets` — create budget
+* `PATCH /api/budgets/[id]` — update budget
+* `DELETE /api/budgets/[id]` — delete budget
+
+**Goals**
+
+* `GET /api/goals` — list goals with progress
+* `POST /api/goals` — create goal
+* `PATCH /api/goals/[id]` — update goal
+* `DELETE /api/goals/[id]` — delete goal
 
 All endpoints:
 

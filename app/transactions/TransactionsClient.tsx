@@ -67,6 +67,11 @@ export default function TransactionsClient({
     [categories, form.type]
   );
 
+  const dateFormatter = useMemo(
+    () => new Intl.DateTimeFormat("id-ID", { timeZone: "UTC" }),
+    []
+  );
+
   function formatCurrency(value: number) {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
@@ -388,7 +393,9 @@ export default function TransactionsClient({
               ) : (
                 transactions.map((tx) => (
                   <tr key={tx.id} className="border-t border-slate-800">
-                    <td className="py-2 text-slate-300">{new Date(tx.date).toLocaleDateString()}</td>
+                    <td className="py-2 text-slate-300">
+                      {dateFormatter.format(new Date(tx.date))}
+                    </td>
                     <td className="py-2">{tx.walletName}</td>
                     <td className="py-2">{tx.categoryName}</td>
                     <td className="py-2">
