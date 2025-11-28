@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { decimalToNumber } from "@/lib/finance";
 import { getMonthlySummary } from "@/lib/summary";
 import { ensureDefaultCategories } from "@/lib/categories";
+import { getBudgetsWithProgress } from "@/lib/budgets";
+import { getGoalsWithProgress } from "@/lib/goals";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -27,6 +29,8 @@ export default async function DashboardPage() {
     orderBy: { date: "desc" },
     take: 5,
   });
+  const budgets = await getBudgetsWithProgress(userId);
+  const goals = await getGoalsWithProgress(userId);
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
@@ -124,6 +128,86 @@ export default async function DashboardPage() {
                 ))
               )}
             </div>
+          </div>
+        </section>
+
+        <section className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold">Budgets Bulan {summary.month}</h2>
+              <a href="/budgets" className="text-sm text-emerald-400 hover:text-emerald-300">
+                Kelola →
+              </a>
+            </div>
+            {budgets.length === 0 ? (
+              <p className="text-sm text-slate-400">
+                Belum ada budget. Tambahkan budget per kategori expense.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {budgets.slice(0, 4).map((budget) => (
+                  <div
+                    key={budget.id}
+                    className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-white">{budget.category?.name ?? "Kategori"}</p>
+                      <span className="text-xs text-slate-400">{budget.month}</span>
+                    </div>
+                    <div className="mt-2 h-2 rounded-full bg-slate-800 overflow-hidden">
+                      <div
+                        className={`h-full ${budget.spent > budget.amount ? "bg-rose-500" : "bg-emerald-500"}`}
+                        style={{ width: `${Math.min(budget.progress, 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1">
+                      {formatCurrency(decimalToNumber(budget.spent))} /{" "}
+                      {formatCurrency(decimalToNumber(budget.amount))}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold">Savings Goals</h2>
+              <a href="/budgets" className="text-sm text-emerald-400 hover:text-emerald-300">
+                Kelola →
+              </a>
+            </div>
+            {goals.length === 0 ? (
+              <p className="text-sm text-slate-400">Belum ada goal.</p>
+            ) : (
+              <div className="space-y-3">
+                {goals.slice(0, 4).map((goal) => (
+                  <div
+                    key={goal.id}
+                    className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-white">{goal.name}</p>
+                      {goal.deadline && (
+                        <span className="text-xs text-slate-400">
+                          {new Date(goal.deadline).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 h-2 rounded-full bg-slate-800 overflow-hidden">
+                      <div
+                        className="h-full bg-sky-500"
+                        style={{ width: `${Math.min(goal.progress, 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1">
+                      {formatCurrency(decimalToNumber(goal.currentAmount))} /{" "}
+                      {formatCurrency(decimalToNumber(goal.targetAmount))} ({goal.progress}%)
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
