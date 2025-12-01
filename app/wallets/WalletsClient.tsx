@@ -22,7 +22,7 @@ export type WalletClientData = {
 const walletTypeOptions: Array<{ value: WalletType; label: string }> = [
   { value: WalletType.CASH, label: "Cash" },
   { value: WalletType.BANK, label: "Bank" },
-  { value: WalletType.E_WALLET, label: "E-Wallet" },
+  { value: WalletType.E_WALLET, label: "E Wallet" },
   { value: WalletType.INVESTMENT, label: "Investasi" },
   { value: WalletType.OTHER, label: "Lainnya" },
 ];

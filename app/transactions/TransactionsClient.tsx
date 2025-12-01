@@ -983,16 +983,16 @@ const TransactionsList = memo(function TransactionsList({
         <span className="text-xs text-slate-500">{total} transaksi</span>
       </div>
       <div className="hidden sm:block overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-fixed">
           <thead>
             <tr className="text-left text-slate-400">
-              <th className="py-2">Tanggal</th>
-              <th className="py-2">Wallet</th>
-              <th className="py-2">Kategori</th>
-              <th className="py-2">Tipe</th>
-              <th className="py-2 text-right">Jumlah</th>
+              <th className="py-2 w-[120px]">Tanggal</th>
+              <th className="py-2 w-[120px]">Wallet</th>
+              <th className="py-2 w-[140px]">Kategori</th>
+              <th className="py-2 w-[120px]">Tipe</th>
+              <th className="py-2 w-[140px] text-right pr-3">Jumlah</th>
               <th className="py-2">Catatan</th>
-              <th className="py-2 text-right">Aksi</th>
+              <th className="py-2 w-40 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -1027,7 +1027,7 @@ const TransactionsList = memo(function TransactionsList({
                       {tx.type}
                     </span>
                   </td>
-                  <td className="py-2 text-right font-semibold">
+                  <td className="py-2 text-right font-semibold pr-2">
                     <span
                       className={
                         tx.type === TransactionType.INCOME
@@ -1038,7 +1038,9 @@ const TransactionsList = memo(function TransactionsList({
                       {formatCurrency(tx.amount)}
                     </span>
                   </td>
-                  <td className="py-2 text-slate-400 whitespace-pre-line pl-2">{tx.note}</td>
+                  <td className="py-2 text-slate-400 whitespace-pre-line pl-4 align-middle">
+                    {tx.note || <span className="text-slate-600">-</span>}
+                  </td>
                   <td className="py-2 text-right space-x-2">
                     <Button
                       type="button"
