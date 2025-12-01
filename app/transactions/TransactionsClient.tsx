@@ -85,7 +85,9 @@ export default function TransactionsClient({
       style: "currency",
       currency: "IDR",
       maximumFractionDigits: 0,
-    }).format(value || 0);
+    })
+      .format(value || 0)
+      .replace(/\s/g, "");
   }
 
   async function loadTransactions(nextFilters?: typeof filters) {

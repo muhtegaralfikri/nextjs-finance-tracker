@@ -336,7 +336,9 @@ function formatCurrency(value: number) {
     style: "currency",
     currency: "IDR",
     maximumFractionDigits: 0,
-  }).format(value || 0);
+  })
+    .format(value || 0)
+    .replace(/\s/g, "");
 }
 
 function StatCard({

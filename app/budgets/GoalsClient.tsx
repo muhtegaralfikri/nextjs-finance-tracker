@@ -51,7 +51,9 @@ export default function GoalsClient({ initialGoals }: { initialGoals: GoalItem[]
       style: "currency",
       currency: "IDR",
       maximumFractionDigits: 0,
-    }).format(value || 0);
+    })
+      .format(value || 0)
+      .replace(/\s/g, "");
   }
   function formatDate(value: string) {
     return dateFormatter.format(new Date(value));
