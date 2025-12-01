@@ -19,7 +19,12 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 function getPreferredTheme(): Theme {
-  if (typeof window === "undefined") return "dark";
+  if (typeof window === "undefined") return "light";
+
+  const datasetTheme = document.documentElement.dataset.theme;
+  if (datasetTheme === "light" || datasetTheme === "dark") {
+    return datasetTheme;
+  }
 
   const stored = window.localStorage.getItem("theme");
   if (stored === "light" || stored === "dark") {
@@ -32,20 +37,12 @@ function getPreferredTheme(): Theme {
 
 function applyTheme(theme: Theme) {
   document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
   window.localStorage.setItem("theme", theme);
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Default to dark so the server and first client render match; sync real preference after mount.
-  const [theme, setTheme] = useState<Theme>("dark");
-
-  useEffect(() => {
-    const preferred = getPreferredTheme();
-    if (preferred !== "dark") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setTheme(preferred);
-    }
-  }, []);
+  const [theme, setTheme] = useState<Theme>(() => getPreferredTheme());
 
   useEffect(() => {
     applyTheme(theme);
