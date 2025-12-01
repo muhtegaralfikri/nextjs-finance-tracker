@@ -22,10 +22,13 @@ type AllowanceDay = DailyExpense & {
 type AllowancePlan = {
   days: AllowanceDay[];
   totalBudget: number;
+  spendableBudget: number;
   baseDaily: number;
   nextCap: number;
   remainingBudget: number;
   spentSoFar: number;
+  reservedGoal: number;
+  dailySaving: number;
 };
 
 export default function DailyAllowanceClient({
@@ -41,6 +44,7 @@ export default function DailyAllowanceClient({
   const [categoryId, setCategoryId] = useState<string>("");
   const [totalBudget, setTotalBudget] = useState<string>("");
   const [dailyTarget, setDailyTarget] = useState<string>("");
+  const [goalReserve, setGoalReserve] = useState<string>("");
   const [days, setDays] = useState<DailyExpense[]>(initialDays);
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(
     null
@@ -59,8 +63,14 @@ export default function DailyAllowanceClient({
 
   const plan = useMemo(
     () =>
-      buildAllowancePlan(days, Number(totalBudget) || 0, Number(dailyTarget) || 0, todayKey),
-    [dailyTarget, days, todayKey, totalBudget]
+      buildAllowancePlan(
+        days,
+        Number(totalBudget) || 0,
+        Number(dailyTarget) || 0,
+        Number(goalReserve) || 0,
+        todayKey
+      ),
+    [dailyTarget, days, goalReserve, todayKey, totalBudget]
   );
 
   async function handleFetch() {
@@ -146,22 +156,36 @@ export default function DailyAllowanceClient({
               placeholder="Contoh: 20000"
             />
           </Field>
+          <Field label="Cadangan goal bulan ini">
+            <Input
+              type="number"
+              value={goalReserve}
+              onChange={(e) => setGoalReserve(e.target.value)}
+              placeholder="Contoh: 400000 untuk parfum"
+            />
+          </Field>
         </div>
         <p className="text-xs text-slate-400">
-          Formula: sisa dana ÷ sisa hari. Contoh 600k dengan target 20k/hari → 30 hari.
-          Jika satu hari terpakai 40k, limit hari berikutnya jadi lebih kecil supaya total tetap aman.
+          Formula: (dana bulan ini - cadangan goal) ÷ sisa hari. Contoh 600k, tabung 400k untuk parfum,
+          sisa 200k dibagi 30 hari → limit belanja ~6.6k/hari. Jika satu hari terpakai 40k, limit hari berikutnya turun otomatis.
         </p>
       </CardHeader>
 
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <StatChip label="Dana untuk bulan ini" value={formatCurrency(plan.totalBudget)} />
+          <StatChip label="Cadangan goal bulan ini" value={formatCurrency(plan.reservedGoal)} />
           <StatChip label="Target dasar / hari" value={formatCurrency(plan.baseDaily)} />
           <StatChip label="Limit hari berikutnya" value={formatCurrency(plan.nextCap)} />
           <StatChip
             label="Sisa dana terpantau"
             value={formatCurrency(plan.remainingBudget)}
             muted={plan.remainingBudget <= 0}
+          />
+          <StatChip
+            label="Butuh nabung per hari"
+            value={formatCurrency(plan.dailySaving)}
+            muted={plan.reservedGoal === 0}
           />
         </div>
 
@@ -210,21 +234,29 @@ function buildAllowancePlan(
   days: DailyExpense[],
   totalBudgetInput: number,
   dailyTargetInput: number,
+  goalReserveInput: number,
   todayKey: string
 ): AllowancePlan {
   if (days.length === 0) {
     return {
       days: [],
       totalBudget: 0,
+      spendableBudget: 0,
       baseDaily: 0,
       nextCap: 0,
       remainingBudget: 0,
       spentSoFar: 0,
+      reservedGoal: 0,
+      dailySaving: 0,
     };
   }
 
+  const reservedGoal = Math.max(goalReserveInput, 0);
+  const spendableBudgetRaw = totalBudgetInput > 0 ? totalBudgetInput - reservedGoal : 0;
+  const spendableBudget = Math.max(spendableBudgetRaw, 0);
+
   const resolvedBudget =
-    totalBudgetInput > 0 ? totalBudgetInput : Math.max(dailyTargetInput, 0) * days.length;
+    spendableBudget > 0 ? spendableBudget : Math.max(dailyTargetInput, 0) * days.length;
   const baseDaily =
     dailyTargetInput > 0
       ? dailyTargetInput
@@ -254,14 +286,19 @@ function buildAllowancePlan(
   const lastPlanned = plannedDays.length > 0 ? plannedDays[plannedDays.length - 1].planned : 0;
   const nextCap = nextDay?.planned ?? (lastPlanned || baseDaily);
   const remainingBudget = Math.max(0, resolvedBudget - spentSoFar);
+  const dailySaving =
+    reservedGoal > 0 && days.length > 0 ? Math.ceil(reservedGoal / days.length) : 0;
 
   return {
     days: plannedDays,
-    totalBudget: resolvedBudget,
+    totalBudget: totalBudgetInput,
+    spendableBudget,
     baseDaily,
     nextCap,
     remainingBudget,
     spentSoFar,
+    reservedGoal,
+    dailySaving,
   };
 }
 
