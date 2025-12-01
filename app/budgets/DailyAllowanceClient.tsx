@@ -43,6 +43,7 @@ export default function DailyAllowanceClient({
   categories: BudgetCategory[];
   initialDays: DailyExpense[];
 }) {
+  const [hydrated, setHydrated] = useState(false);
   const [month, setMonth] = useState(initialMonth);
   const [categoryId, setCategoryId] = useState<string>("");
   const [totalBudget, setTotalBudget] = useState<string>("");
@@ -62,8 +63,48 @@ export default function DailyAllowanceClient({
     if (initialDays.length === 0) {
       handleFetch();
     }
+    try {
+      const saved = localStorage.getItem("daily-allowance-settings");
+      if (saved) {
+        const parsed = JSON.parse(saved) as {
+          month?: string;
+          categoryId?: string;
+          totalBudget?: string;
+          dailyTarget?: string;
+          goalReserve?: string;
+          deposits?: string[];
+        };
+        if (parsed.month) setMonth(parsed.month);
+        if (parsed.categoryId) setCategoryId(parsed.categoryId);
+        if (parsed.totalBudget) setTotalBudget(parsed.totalBudget);
+        if (parsed.dailyTarget) setDailyTarget(parsed.dailyTarget);
+        if (parsed.goalReserve) setGoalReserve(parsed.goalReserve);
+        if (parsed.deposits?.length) setGoalDeposits(new Set(parsed.deposits));
+      }
+    } catch (error) {
+      console.error("Failed to load allowance prefs", error);
+    } finally {
+      setHydrated(true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const payload = {
+      month,
+      categoryId,
+      totalBudget,
+      dailyTarget,
+      goalReserve,
+      deposits: Array.from(goalDeposits),
+    };
+    try {
+      localStorage.setItem("daily-allowance-settings", JSON.stringify(payload));
+    } catch (error) {
+      console.error("Failed to save allowance prefs", error);
+    }
+  }, [hydrated, month, categoryId, totalBudget, dailyTarget, goalReserve, goalDeposits]);
 
   function toggleGoalDeposit(date: string) {
     setGoalDeposits((prev) => {
