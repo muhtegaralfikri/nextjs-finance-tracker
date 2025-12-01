@@ -48,6 +48,7 @@ const authConfig: NextAuthConfig = {
   ],
   session: {
     strategy: "jwt",
+    maxAge: 60 * 60 * 24 * 7, // 7 hari
   },
   pages: {
     signIn: "/login", // kalau belom login & butuh auth → ke /login

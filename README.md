@@ -15,6 +15,7 @@ Next.js App Router + Prisma + Auth.js finance tracker untuk wallets, transaksi, 
 - Tema default terang, toggle tema di header.
 - Quick actions Profile & Settings di sidebar + bottom nav mobile; halaman `/profile` & `/settings` tersedia.
 - Format Rupiah tanpa spasi antara simbol dan nominal.
+- Transaksi berulang dengan auto-posting, ekspor transaksi ke Excel, dan seed demo siap pakai.
 
 ## Struktur Singkat
 ```
@@ -43,6 +44,7 @@ AUTH_SECRET="your-random-secret"
 1) `npm install`  
 2) `npx prisma generate` (dan `npx prisma migrate dev` jika perlu)  
 3) `npm run dev` lalu buka `http://localhost:3000`  
+4) (Opsional) `npm run db:seed` untuk membuat user demo `demo@finance.local / Password123!` dan data contoh.  
 
 ## Catatan Tema
 - Default render SSR/CSR: terang. Variabel CSS di `app/globals.css` mengatur warna, skeleton pakai `--skeleton-bg` (light: #e2e8f0, dark: #1f2937).
@@ -50,4 +52,3 @@ AUTH_SECRET="your-random-secret"
 ## Konvensi
 - Protected route: `const session = await auth(); if (!session?.user) redirect("/login");`
 - UI berbasis komponen di `src/components/ui/` (button, input, card, select, alert, spinner, skeleton).
-

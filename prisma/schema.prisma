@@ -12,11 +12,12 @@ model User {
   email        String        @unique
   passwordHash String
 
-  wallets      Wallet[]
-  categories   Category[]
-  transactions Transaction[]
-  budgets      Budget[]
-  goals        Goal[]
+  wallets               Wallet[]
+  categories            Category[]
+  transactions          Transaction[]
+  recurringTransactions RecurringTransaction[]
+  budgets               Budget[]
+  goals                 Goal[]
 
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -34,6 +35,7 @@ model Wallet {
   currency       String         @default("IDR")
 
   transactions   Transaction[]
+  recurring      RecurringTransaction[]
 
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -49,6 +51,7 @@ model Category {
   isDefault    Boolean        @default(false)
 
   transactions Transaction[]
+  recurring    RecurringTransaction[]
   budgets      Budget[]
 
   createdAt    DateTime       @default(now())
@@ -73,6 +76,27 @@ model Transaction {
 
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+}
+
+model RecurringTransaction {
+  id         String            @id @default(cuid())
+  user       User              @relation(fields: [userId], references: [id])
+  userId     String
+
+  wallet     Wallet            @relation(fields: [walletId], references: [id])
+  walletId   String
+
+  category   Category          @relation(fields: [categoryId], references: [id])
+  categoryId String
+
+  type       TransactionType
+  amount     Decimal           @default(0)
+  cadence    RecurringCadence
+  nextRun    DateTime
+  note       String?
+
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
 }
 
 model Budget {
@@ -123,4 +147,10 @@ enum CategoryType {
 enum TransactionType {
   INCOME
   EXPENSE
+}
+
+enum RecurringCadence {
+  DAILY
+  WEEKLY
+  MONTHLY
 }

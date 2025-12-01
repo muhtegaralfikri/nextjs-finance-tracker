@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureDefaultCategories } from "@/lib/categories";
 import { getMonthRange, decimalToNumber } from "@/lib/finance";
+import { applyDueRecurrences } from "@/lib/recurring";
 
 export const runtime = "nodejs";
 
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
   const toParam = searchParams.get("to") || undefined;
 
   try {
+    await applyDueRecurrences(userId);
     const { from, to } = fromParam || toParam ? getRangeWithCustomDates(fromParam, toParam) : getMonthRange();
 
     const transactions = await prisma.transaction.findMany({

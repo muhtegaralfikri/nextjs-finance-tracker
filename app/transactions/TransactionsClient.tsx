@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { CategoryType, TransactionType } from "@prisma/client";
+import { useEffect, useMemo, useState } from "react";
+import { CategoryType, RecurringCadence, TransactionType } from "@prisma/client";
 import Alert from "@/components/ui/alert";
 import Button from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,20 +35,36 @@ export type TransactionClientData = {
   note?: string;
 };
 
+export type RecurringClientData = {
+  id: string;
+  walletId: string;
+  walletName: string;
+  categoryId: string;
+  categoryName: string;
+  type: TransactionType;
+  cadence: RecurringCadence;
+  amount: number;
+  nextRun: string;
+  note?: string | null;
+};
+
 export default function TransactionsClient({
   wallets,
   categories,
   initialTransactions,
   initialFrom,
   initialTo,
+  initialRecurrences,
 }: {
   wallets: TransactionWallet[];
   categories: TransactionCategory[];
   initialTransactions: TransactionClientData[];
   initialFrom: string;
   initialTo: string;
+  initialRecurrences: RecurringClientData[];
 }) {
   const [transactions, setTransactions] = useState<TransactionClientData[]>(initialTransactions);
+  const [recurrences, setRecurrences] = useState<RecurringClientData[]>(initialRecurrences);
   const [filters, setFilters] = useState({
     from: initialFrom,
     to: initialTo,
@@ -64,16 +80,39 @@ export default function TransactionsClient({
     date: initialTo,
     note: "",
   });
+  const [recurringForm, setRecurringForm] = useState({
+    walletId: wallets[0]?.id || "",
+    type: TransactionType.EXPENSE as TransactionType,
+    categoryId:
+      categories.find((c) => c.type === TransactionType.EXPENSE)?.id || "",
+    amount: "",
+    cadence: RecurringCadence.MONTHLY as RecurringCadence,
+    nextRun: initialTo,
+    note: "",
+  });
+  const [recurringLoading, setRecurringLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(
     null
   );
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const availableCategories = useMemo(
     () => categories.filter((c) => c.type === form.type),
     [categories, form.type]
   );
+  const recurringCategories = useMemo(
+    () => categories.filter((c) => c.type === recurringForm.type),
+    [categories, recurringForm.type]
+  );
+
+  useEffect(() => {
+    const fallback = recurringCategories[0]?.id || "";
+    if (fallback && recurringForm.categoryId !== fallback) {
+      setRecurringForm((prev) => ({ ...prev, categoryId: fallback }));
+    }
+  }, [recurringCategories, recurringForm.categoryId]);
 
   const dateFormatter = useMemo(
     () => new Intl.DateTimeFormat("id-ID", { timeZone: "UTC" }),
@@ -119,6 +158,26 @@ export default function TransactionsClient({
       setStatus({ type: "error", message: "Tidak bisa terhubung ke server" });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadRecurrences() {
+    setRecurringLoading(true);
+    try {
+      const res = await fetch("/api/recurring");
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setStatus({ type: "error", message: data?.error || "Gagal memuat transaksi berulang" });
+        return;
+      }
+      const data = await res.json();
+      const normalized: RecurringClientData[] = (data.recurrences || []).map(normalizeRecurring);
+      setRecurrences(normalized);
+    } catch (error) {
+      console.error(error);
+      setStatus({ type: "error", message: "Tidak bisa memuat recurring" });
+    } finally {
+      setRecurringLoading(false);
     }
   }
 
@@ -226,6 +285,103 @@ export default function TransactionsClient({
       setStatus({ type: "error", message: "Tidak bisa terhubung ke server" });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleCreateRecurring() {
+    if (!recurringForm.walletId || !recurringForm.categoryId || !recurringForm.amount) {
+      setStatus({ type: "error", message: "Lengkapi data recurring" });
+      return;
+    }
+    if (Number(recurringForm.amount) <= 0) {
+      setStatus({ type: "error", message: "Nominal recurring harus lebih dari 0" });
+      return;
+    }
+
+    setRecurringLoading(true);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/recurring", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletId: recurringForm.walletId,
+          categoryId: recurringForm.categoryId,
+          type: recurringForm.type,
+          amount: Number(recurringForm.amount),
+          cadence: recurringForm.cadence,
+          nextRun: recurringForm.nextRun,
+          note: recurringForm.note || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setStatus({ type: "error", message: data?.error || "Gagal membuat recurring" });
+        return;
+      }
+
+      const created = normalizeRecurring(await res.json());
+      setRecurrences((prev) => [created, ...prev]);
+      setRecurringForm((prev) => ({ ...prev, amount: "", note: "" }));
+      setStatus({ type: "success", message: "Recurring disimpan" });
+    } catch (error) {
+      console.error(error);
+      setStatus({ type: "error", message: "Tidak bisa terhubung ke server" });
+    } finally {
+      setRecurringLoading(false);
+    }
+  }
+
+  async function handleDeleteRecurring(id: string) {
+    if (!confirm("Hapus transaksi berulang ini?")) return;
+    setRecurringLoading(true);
+    setStatus(null);
+    try {
+      const res = await fetch(`/api/recurring/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setStatus({ type: "error", message: data?.error || "Gagal menghapus recurring" });
+        return;
+      }
+      setRecurrences((prev) => prev.filter((r) => r.id !== id));
+      setStatus({ type: "success", message: "Recurring dihapus" });
+    } catch (error) {
+      console.error(error);
+      setStatus({ type: "error", message: "Tidak bisa terhubung ke server" });
+    } finally {
+      setRecurringLoading(false);
+    }
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (filters.from) params.set("from", filters.from);
+      if (filters.to) params.set("to", filters.to);
+      if (filters.walletId) params.set("walletId", filters.walletId);
+      if (filters.categoryId) params.set("categoryId", filters.categoryId);
+
+      const res = await fetch(`/api/transactions/export?${params.toString()}`);
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setStatus({ type: "error", message: data?.error || "Gagal mengekspor Excel" });
+        return;
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "transactions.xlsx";
+      link.click();
+      window.URL.revokeObjectURL(url);
+      setStatus({ type: "success", message: "Berhasil ekspor Excel" });
+    } catch (error) {
+      console.error(error);
+      setStatus({ type: "error", message: "Tidak bisa mengekspor Excel" });
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -375,6 +531,9 @@ export default function TransactionsClient({
             <Button type="button" variant="outline" onClick={() => loadTransactions()} loading={loading}>
               Terapkan filter
             </Button>
+            <Button type="button" variant="outline" onClick={handleExport} loading={exporting}>
+              Export Excel
+            </Button>
             <Button
               type="button"
               variant="ghost"
@@ -388,6 +547,145 @@ export default function TransactionsClient({
             </Button>
           </div>
         </CardHeader>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <CardTitle>Transaksi Berulang</CardTitle>
+            <CardDescription>Auto-generate pada tanggal jatuh tempo.</CardDescription>
+          </div>
+          <Button type="button" variant="outline" onClick={loadRecurrences} loading={recurringLoading}>
+            Muat ulang recurring
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <label className="text-sm text-slate-300">Tipe</label>
+              <Select
+                value={recurringForm.type}
+                onChange={(e) =>
+                  setRecurringForm((prev) => ({
+                    ...prev,
+                    type: e.target.value as TransactionType,
+                  }))
+                }
+              >
+                <option value={TransactionType.EXPENSE}>Expense</option>
+                <option value={TransactionType.INCOME}>Income</option>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-slate-300">Wallet</label>
+              <Select
+                value={recurringForm.walletId}
+                onChange={(e) => setRecurringForm((prev) => ({ ...prev, walletId: e.target.value }))}
+              >
+                {wallets.map((wallet) => (
+                  <option key={wallet.id} value={wallet.id}>
+                    {wallet.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-slate-300">Kategori</label>
+              <Select
+                value={recurringForm.categoryId}
+                onChange={(e) =>
+                  setRecurringForm((prev) => ({ ...prev, categoryId: e.target.value }))
+                }
+              >
+                {recurringCategories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-slate-300">Nominal</label>
+              <Input
+                type="number"
+                value={recurringForm.amount}
+                onChange={(e) => setRecurringForm((prev) => ({ ...prev, amount: e.target.value }))}
+                placeholder="50000"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-slate-300">Frekuensi</label>
+              <Select
+                value={recurringForm.cadence}
+                onChange={(e) =>
+                  setRecurringForm((prev) => ({
+                    ...prev,
+                    cadence: e.target.value as RecurringCadence,
+                  }))
+                }
+              >
+                <option value={RecurringCadence.DAILY}>Harian</option>
+                <option value={RecurringCadence.WEEKLY}>Mingguan</option>
+                <option value={RecurringCadence.MONTHLY}>Bulanan</option>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-slate-300">Mulai</label>
+              <Input
+                type="date"
+                value={recurringForm.nextRun}
+                onChange={(e) => setRecurringForm((prev) => ({ ...prev, nextRun: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1 md:col-span-3">
+              <label className="text-sm text-slate-300">Catatan</label>
+              <Input
+                value={recurringForm.note}
+                onChange={(e) => setRecurringForm((prev) => ({ ...prev, note: e.target.value }))}
+                placeholder="opsional"
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" onClick={handleCreateRecurring} loading={recurringLoading}>
+              Simpan Recurring
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            {recurrences.length === 0 ? (
+              <p className="text-sm text-slate-400">Belum ada recurring.</p>
+            ) : (
+              recurrences.map((recurring) => (
+                <div
+                  key={recurring.id}
+                  className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+                >
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-white">
+                      {recurring.walletName} • {recurring.categoryName}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {recurring.type} • {recurring.cadence} • Mulai {recurring.nextRun.slice(0, 10)}
+                    </p>
+                    <p className="text-sm text-slate-300">
+                      {formatCurrency(recurring.amount)}{" "}
+                      {recurring.note ? <span className="text-slate-400">• {recurring.note}</span> : null}
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    onClick={() => handleDeleteRecurring(recurring.id)}
+                    loading={recurringLoading}
+                  >
+                    Hapus
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
       </Card>
 
       <Card>
@@ -585,5 +883,38 @@ function normalizeTransaction(tx: ApiTransaction): TransactionClientData {
     amount: Number(tx.amount),
     date: typeof tx.date === "string" ? tx.date : new Date(tx.date).toISOString(),
     note: tx.note || "",
+  };
+}
+
+type ApiRecurring = {
+  id: string;
+  walletId: string;
+  categoryId: string;
+  wallet?: { name: string };
+  category?: { name: string };
+  walletName?: string;
+  categoryName?: string;
+  type: TransactionType;
+  cadence: RecurringCadence;
+  amount: number | string;
+  nextRun: string | Date;
+  note?: string | null;
+};
+
+function normalizeRecurring(recurring: ApiRecurring): RecurringClientData {
+  return {
+    id: recurring.id,
+    walletId: recurring.walletId,
+    walletName: recurring.wallet?.name || recurring.walletName || "Wallet",
+    categoryId: recurring.categoryId,
+    categoryName: recurring.category?.name || recurring.categoryName || "Kategori",
+    type: recurring.type,
+    cadence: recurring.cadence,
+    amount: Number(recurring.amount),
+    nextRun:
+      typeof recurring.nextRun === "string"
+        ? recurring.nextRun
+        : new Date(recurring.nextRun).toISOString(),
+    note: recurring.note || null,
   };
 }

@@ -3,12 +3,15 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getMonthRange, decimalToNumber, getWalletsWithBalance } from "@/lib/finance";
 import { ensureDefaultCategories } from "@/lib/categories";
+import { applyDueRecurrences } from "@/lib/recurring";
 import TransactionsClient, {
   TransactionClientData,
   TransactionCategory,
   TransactionWallet,
 } from "./TransactionsClient";
 import AppShell from "@/components/AppShell";
+
+export const runtime = "nodejs";
 
 function formatInputDate(date: Date) {
   const year = date.getFullYear();
@@ -25,6 +28,7 @@ export default async function TransactionsPage() {
   const userId = session.user.id;
 
   await ensureDefaultCategories(userId);
+  await applyDueRecurrences(userId);
 
   const walletsData = await getWalletsWithBalance(userId);
   const categoriesData = await prisma.category.findMany({
@@ -71,6 +75,25 @@ export default async function TransactionsPage() {
     type: c.type,
   }));
 
+  const recurrencesRaw = await prisma.recurringTransaction.findMany({
+    where: { userId },
+    include: { wallet: true, category: true },
+    orderBy: { nextRun: "asc" },
+  });
+
+  const recurrences = recurrencesRaw.map((r) => ({
+    id: r.id,
+    walletId: r.walletId,
+    walletName: r.wallet.name,
+    categoryId: r.categoryId,
+    categoryName: r.category.name,
+    type: r.type,
+    cadence: r.cadence,
+    amount: Number(r.amount),
+    nextRun: r.nextRun.toISOString(),
+    note: r.note,
+  }));
+
   return (
     <AppShell>
       <div className="mx-auto max-w-6xl px-4 py-8 space-y-4">
@@ -87,6 +110,7 @@ export default async function TransactionsPage() {
           initialTransactions={initialTransactions}
           initialFrom={formatInputDate(from)}
           initialTo={formatInputDate(to)}
+          initialRecurrences={recurrences}
         />
       </div>
     </AppShell>

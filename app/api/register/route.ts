@@ -17,6 +17,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!strongPassword.test(password)) {
+      return NextResponse.json(
+        { error: "Password minimal 8 karakter dengan huruf besar, kecil, dan angka" },
+        { status: 400 }
+      );
+    }
+
     const existing = await prisma.user.findUnique({
       where: { email },
     });
