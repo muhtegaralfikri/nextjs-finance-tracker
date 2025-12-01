@@ -124,8 +124,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 href={item.href}
                 className={`flex flex-col items-center justify-center gap-1 py-3 text-xs transition-colors ${
                   active
-                    ? "text-emerald-300 bg-emerald-500/10 border-t border-emerald-400/40"
-                    : "text-slate-300 hover:text-emerald-200 active:bg-slate-900/80"
+                    ? "text-emerald-300"
+                    : "text-slate-400 hover:text-emerald-200 active:text-emerald-200"
                 }`}
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
