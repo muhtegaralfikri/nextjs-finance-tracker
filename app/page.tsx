@@ -6,22 +6,13 @@ export default function Home() {
       className="relative min-h-screen overflow-hidden"
       style={{ background: "var(--bg-app)", color: "var(--text-primary)" }}
     >
-      <div
-        className="pointer-events-none absolute inset-0 opacity-80"
-        aria-hidden
-        style={{
-          background:
-            "radial-gradient(circle at 20% 20%, rgba(16, 185, 129, 0.16), transparent 35%), radial-gradient(circle at 80% 10%, rgba(94, 234, 212, 0.14), transparent 30%), linear-gradient(135deg, rgba(15, 23, 42, 0.7), transparent 60%)",
-        }}
-      />
-
       <div className="relative mx-auto max-w-5xl px-6 py-16">
         <div className="flex justify-end">
           <ThemeToggle />
         </div>
         <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm text-emerald-300/80 uppercase tracking-[0.2em]">
+            <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-300 uppercase tracking-[0.2em]">
               Personal Finance Tracker
             </p>
             <h1 className="mt-2 text-4xl md:text-5xl font-semibold leading-tight">
