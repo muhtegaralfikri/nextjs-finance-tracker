@@ -112,25 +112,7 @@ export default async function DashboardPage() {
               <h2 className="text-lg font-semibold">Expense per Kategori</h2>
               <span className="text-xs text-slate-500">Bulan {summary.month}</span>
             </div>
-            <div className="space-y-2">
-              {summary.byCategory.length === 0 ? (
-                <p className="text-sm text-slate-400">
-                  Belum ada pengeluaran bulan ini.
-                </p>
-              ) : (
-                summary.byCategory.map((item) => (
-                  <div
-                    key={item.categoryId}
-                    className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2"
-                  >
-                    <p className="text-sm">{item.categoryName}</p>
-                    <p className="text-sm font-semibold text-rose-300">
-                      {formatCurrency(item.total)}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
+            <CategoryPie data={summary.byCategory} />
           </div>
         </section>
 
@@ -356,6 +338,84 @@ function StatCard({
       <p className="text-sm text-slate-400 mb-2">{title}</p>
       <p className="text-xl font-semibold text-white">{value}</p>
       <div className={`mt-3 h-1 rounded-full bg-linear-to-r ${accent}`} />
+    </div>
+  );
+}
+
+function CategoryPie({
+  data,
+}: {
+  data: { categoryName: string; total: number }[];
+}) {
+  const total = data.reduce((acc, item) => acc + item.total, 0);
+  if (total <= 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-6 text-sm text-slate-400">
+        Belum ada pengeluaran.
+      </div>
+    );
+  }
+
+  const palette = [
+    "#34d399", // emerald
+    "#38bdf8", // sky
+    "#f472b6", // pink
+    "#facc15", // amber
+    "#a855f7", // purple
+    "#f97316", // orange
+    "#22d3ee", // cyan
+  ];
+
+  const { segments } = data.reduce(
+    (acc, item, index) => {
+      const share = (item.total / total) * 100;
+      const start = acc.angle;
+      const end = start + (share / 100) * 360;
+      const color = palette[index % palette.length];
+      acc.angle = end;
+      acc.segments.push({ ...item, start, end, color, share });
+      return acc;
+    },
+    { angle: 0, segments: [] as Array<{ categoryName: string; total: number; start: number; end: number; color: string; share: number }> }
+  );
+
+  const gradient = segments
+    .map((seg) => `${seg.color} ${seg.start}deg ${seg.end}deg`)
+    .join(", ");
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div
+        className="relative mx-auto h-44 w-44 rounded-full"
+        style={{ background: `conic-gradient(${gradient})` }}
+      >
+        <div className="absolute inset-4 rounded-full bg-slate-900/80 border border-slate-800 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-xs text-slate-400">Total</p>
+            <p className="text-sm font-semibold text-white">{formatCurrency(total)}</p>
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {segments.map((seg) => (
+          <div
+            key={seg.categoryName}
+            className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2"
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className="h-3 w-3 rounded-full border border-slate-800"
+                style={{ backgroundColor: seg.color }}
+              />
+              <p className="text-sm text-white">{seg.categoryName}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-slate-400">{seg.share.toFixed(1)}%</p>
+              <p className="text-sm font-semibold text-rose-200">{formatCurrency(seg.total)}</p>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
