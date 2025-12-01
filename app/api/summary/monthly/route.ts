@@ -15,7 +15,9 @@ export async function GET(request: Request) {
 
   try {
     const summary = await getMonthlySummary(session.user.id, monthParam || undefined);
-    return NextResponse.json(summary);
+    return NextResponse.json(summary, {
+      headers: { "Cache-Control": "private, max-age=300" },
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json(

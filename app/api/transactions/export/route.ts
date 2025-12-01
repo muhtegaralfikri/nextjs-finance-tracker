@@ -122,6 +122,7 @@ export async function GET(request: Request) {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "Content-Disposition": `attachment; filename="transactions.xlsx"`,
+      "Cache-Control": "private, max-age=300",
     },
   });
 }

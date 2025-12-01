@@ -42,7 +42,15 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => getPreferredTheme());
+  // Start from light to keep SSR/CSR markup consistent; sync to preferred after mount.
+  const [theme, setTheme] = useState<Theme>("light");
+
+  useEffect(() => {
+    const preferred = getPreferredTheme();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTheme(preferred);
+    applyTheme(preferred);
+  }, []);
 
   useEffect(() => {
     applyTheme(theme);

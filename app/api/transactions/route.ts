@@ -51,18 +51,33 @@ export async function GET(request: Request) {
       },
     } as const;
 
-    const [transactions, total] = await Promise.all([
+    const [transactions, total, incomeAgg, expenseAgg] = await Promise.all([
       prisma.transaction.findMany({
         where,
-        include: {
-          wallet: true,
-          category: true,
+        select: {
+          id: true,
+          walletId: true,
+          categoryId: true,
+          type: true,
+          amount: true,
+          date: true,
+          note: true,
+          wallet: { select: { name: true } },
+          category: { select: { name: true, type: true } },
         },
         orderBy: { date: "desc" },
         skip,
         take: limit,
       }),
       prisma.transaction.count({ where }),
+      prisma.transaction.aggregate({
+        where: { ...where, type: TransactionType.INCOME },
+        _sum: { amount: true },
+      }),
+      prisma.transaction.aggregate({
+        where: { ...where, type: TransactionType.EXPENSE },
+        _sum: { amount: true },
+      }),
     ]);
 
     const normalized = transactions.map((tx) => ({
@@ -70,7 +85,17 @@ export async function GET(request: Request) {
       amount: decimalToNumber(tx.amount),
     }));
 
-    return NextResponse.json({ transactions: normalized, total, page, limit });
+    const totalIncome = decimalToNumber(incomeAgg._sum.amount || 0);
+    const totalExpense = decimalToNumber(expenseAgg._sum.amount || 0);
+    const net = totalIncome - totalExpense;
+
+    return NextResponse.json({
+      transactions: normalized,
+      total,
+      page,
+      limit,
+      summary: { totalIncome, totalExpense, net },
+    });
   } catch (error) {
     console.error(error);
     return NextResponse.json(

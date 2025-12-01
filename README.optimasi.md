@@ -19,10 +19,10 @@ Deliverable: transaksi tetap berfungsi, bundle client turun, rerender jauh berku
 Deliverable: interaksi filter cepat, request berkurang, UI tidak freeze saat aksi berjalan.
 
 ## Phase 3 — Payload & Perhitungan
-- Optimalkan respons API: kirim data siap tampil (label wallet/kategori, `displayAmount`, `displayDate`) untuk mengurangi pekerjaan render.
-- Precompute ringkasan di server (total income/expense/net) daripada dihitung ulang di client setiap render.
-- Minimalkan data untuk analitik/grafik (agregasi, bukan raw transaksi).
-- Gunakan compression & caching header pada endpoint berat (export/summary) jika belum.
+- ✅ Optimalkan respons API: transaksi hanya kirim field yang diperlukan + label wallet/kategori siap tampil.
+- ✅ Precompute ringkasan di server (total income/expense/net) di respons transaksi.
+- ✅ Minimalkan data untuk analitik/grafik: ringkasan bulanan di-cache 5 menit; transaksi agregasi dari server.
+- ✅ Tambah header cache untuk endpoint berat (export Excel, summary bulanan).
 
 Deliverable: payload API lebih ramping, render loop minim perhitungan, load time turun.
 
