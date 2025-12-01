@@ -78,7 +78,7 @@ export default function Home() {
             </a>
             <a
               href="/transactions"
-              className="rounded-lg border border-slate-700 px-4 py-2 text-slate-100 hover:border-emerald-400"
+              className="rounded-lg border border-slate-700 px-4 py-2 text-slate-100 hover:border-emerald-400 hover:bg-slate-800/60 hover:text-emerald-200 transition-colors"
             >
               Lihat Transaksi
             </a>

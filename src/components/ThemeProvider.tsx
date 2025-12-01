@@ -36,17 +36,21 @@ function applyTheme(theme: Theme) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  // Default to dark so the server and first client render match; sync real preference after mount.
   const [theme, setTheme] = useState<Theme>("dark");
 
   useEffect(() => {
-    const next = getPreferredTheme();
-    setTheme(next);
-    applyTheme(next);
+    const preferred = getPreferredTheme();
+    if (preferred !== "dark") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTheme(preferred);
+    }
   }, []);
 
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
+
 
   const value = useMemo<ThemeContextValue>(
     () => ({
