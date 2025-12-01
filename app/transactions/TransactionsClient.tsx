@@ -69,6 +69,15 @@ type TransactionFormState = {
   note: string;
 };
 
+type TransferFormState = {
+  fromWalletId: string;
+  toWalletId: string;
+  amount: string;
+  fee: string;
+  date: string;
+  note: string;
+};
+
 type RecurringFormState = {
   walletId: string;
   type: TransactionType;
@@ -107,6 +116,14 @@ export default function TransactionsClient({
     walletId: "",
     categoryId: "",
   });
+  const [transferForm, setTransferForm] = useState<TransferFormState>({
+    fromWalletId: wallets[0]?.id || "",
+    toWalletId: wallets[1]?.id || wallets[0]?.id || "",
+    amount: "",
+    fee: "",
+    date: initialTo,
+    note: "",
+  });
   const [form, setForm] = useState<TransactionFormState>({
     walletId: wallets[0]?.id || "",
     categoryId: categories.find((c) => c.type === TransactionType.EXPENSE)?.id || "",
@@ -129,6 +146,7 @@ export default function TransactionsClient({
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(
     null
   );
+  const [transferLoading, setTransferLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -471,6 +489,63 @@ export default function TransactionsClient({
     }
   }
 
+  async function handleTransfer() {
+    if (!transferForm.fromWalletId || !transferForm.toWalletId || !transferForm.amount) {
+      setStatus({ type: "error", message: "Lengkapi data transfer" });
+      return;
+    }
+    if (transferForm.fromWalletId === transferForm.toWalletId) {
+      setStatus({ type: "error", message: "Pilih wallet asal dan tujuan yang berbeda" });
+      return;
+    }
+    if (Number(transferForm.amount) <= 0) {
+      setStatus({ type: "error", message: "Nominal transfer harus lebih dari 0" });
+      return;
+    }
+    if (transferForm.fee && Number(transferForm.fee) < 0) {
+      setStatus({ type: "error", message: "Biaya admin tidak boleh negatif" });
+      return;
+    }
+
+    setTransferLoading(true);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/transfers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fromWalletId: transferForm.fromWalletId,
+          toWalletId: transferForm.toWalletId,
+          amount: Number(transferForm.amount),
+          fee: transferForm.fee ? Number(transferForm.fee) : 0,
+          date: transferForm.date,
+          note: transferForm.note || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setStatus({ type: "error", message: data?.error || "Gagal memproses transfer" });
+        return;
+      }
+
+      setStatus({ type: "success", message: "Transfer berhasil" });
+      setTransferForm((prev) => ({
+        ...prev,
+        amount: "",
+        fee: "",
+        note: "",
+      }));
+      await fetchTransactions(debouncedFilters, 1);
+      setPage(1);
+    } catch (error) {
+      console.error(error);
+      setStatus({ type: "error", message: "Tidak bisa terhubung ke server" });
+    } finally {
+      setTransferLoading(false);
+    }
+  }
+
   async function handleExport() {
     setExporting(true);
     try {
@@ -549,6 +624,19 @@ export default function TransactionsClient({
           setDebouncedFiltersState(reset);
           setPage(1);
         }}
+      />
+
+      <TransferSection
+        wallets={wallets}
+        transferForm={transferForm}
+        loading={transferLoading}
+        onChange={(field, value) =>
+          setTransferForm((prev) => ({
+            ...prev,
+            [field]: value,
+          }))
+        }
+        onSubmit={handleTransfer}
       />
 
       <RecurringSection
@@ -789,6 +877,98 @@ const FilterSection = memo(function FilterSection({
           </Button>
         </div>
       </CardHeader>
+    </Card>
+  );
+});
+
+const TransferSection = memo(function TransferSection({
+  wallets,
+  transferForm,
+  loading,
+  onChange,
+  onSubmit,
+}: {
+  wallets: TransactionWallet[];
+  transferForm: TransferFormState;
+  loading: boolean;
+  onChange: (field: keyof TransferFormState, value: string) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div>
+          <CardTitle>Transfer Antar Wallet</CardTitle>
+          <CardDescription>Pindahkan saldo antar wallet, otomatis bikin dua transaksi + biaya admin.</CardDescription>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Dari Wallet</label>
+            <Select
+              value={transferForm.fromWalletId}
+              onChange={(e) => onChange("fromWalletId", e.target.value)}
+            >
+              {wallets.map((wallet) => (
+                <option key={wallet.id} value={wallet.id}>
+                  {wallet.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Ke Wallet</label>
+            <Select
+              value={transferForm.toWalletId}
+              onChange={(e) => onChange("toWalletId", e.target.value)}
+            >
+              {wallets.map((wallet) => (
+                <option key={wallet.id} value={wallet.id}>
+                  {wallet.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Tanggal</label>
+            <Input
+              type="date"
+              value={transferForm.date}
+              onChange={(e) => onChange("date", e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Nominal</label>
+            <Input
+              type="number"
+              value={transferForm.amount}
+              onChange={(e) => onChange("amount", e.target.value)}
+              placeholder="100000"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Biaya Admin (opsional)</label>
+            <Input
+              type="number"
+              value={transferForm.fee}
+              onChange={(e) => onChange("fee", e.target.value)}
+              placeholder="0"
+            />
+          </div>
+          <div className="space-y-1 md:col-span-3">
+            <label className="text-sm text-slate-300">Catatan</label>
+            <Input
+              value={transferForm.note}
+              onChange={(e) => onChange("note", e.target.value)}
+              placeholder="opsional"
+            />
+          </div>
+        </div>
+        <Button type="button" onClick={onSubmit} loading={loading}>
+          Simpan Transfer
+        </Button>
+      </CardContent>
     </Card>
   );
 });

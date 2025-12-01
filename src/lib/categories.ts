@@ -36,3 +36,20 @@ export async function ensureDefaultCategories(userId: string) {
     })),
   });
 }
+
+export async function getOrCreateCategory(userId: string, name: string, type: CategoryType) {
+  const existing = await prisma.category.findFirst({
+    where: { userId, name, type },
+  });
+
+  if (existing) return existing;
+
+  return prisma.category.create({
+    data: {
+      name,
+      type,
+      isDefault: true,
+      userId,
+    },
+  });
+}
