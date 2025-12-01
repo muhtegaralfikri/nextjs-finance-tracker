@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { WalletType } from "@prisma/client";
 import Alert from "@/components/ui/alert";
 import Button from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Input from "@/components/ui/input";
 import Select from "@/components/ui/select";
 import Spinner from "@/components/ui/spinner";
+import { WalletType } from "@/lib/financeTypes";
+import { formatCurrency } from "@/lib/currency";
 
 export type WalletClientData = {
   id: string;
@@ -56,16 +57,6 @@ export default function WalletsClient({
     currency: "IDR",
     initialBalance: "0",
   });
-
-  function formatCurrency(value: number) {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-    })
-      .format(value || 0)
-      .replace(/\s/g, "");
-  }
 
   async function handleCreate() {
     if (!form.name.trim()) {

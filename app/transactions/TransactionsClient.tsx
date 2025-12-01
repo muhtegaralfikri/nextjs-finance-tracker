@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { CategoryType, RecurringCadence, TransactionType } from "@prisma/client";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import Alert from "@/components/ui/alert";
 import Button from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Input from "@/components/ui/input";
 import Select from "@/components/ui/select";
 import Spinner from "@/components/ui/spinner";
+import { CategoryType, RecurringCadence, TransactionType } from "@/lib/financeTypes";
+import { formatCurrency } from "@/lib/currency";
+import { formatDate } from "@/lib/date";
 
 export type TransactionWallet = {
   id: string;
@@ -48,6 +50,27 @@ export type RecurringClientData = {
   note?: string | null;
 };
 
+const PAGE_SIZE = 20;
+
+type TransactionFormState = {
+  walletId: string;
+  categoryId: string;
+  type: TransactionType;
+  amount: string;
+  date: string;
+  note: string;
+};
+
+type RecurringFormState = {
+  walletId: string;
+  type: TransactionType;
+  categoryId: string;
+  amount: string;
+  cadence: RecurringCadence;
+  nextRun: string;
+  note: string;
+};
+
 export default function TransactionsClient({
   wallets,
   categories,
@@ -73,8 +96,7 @@ export default function TransactionsClient({
   });
   const [form, setForm] = useState({
     walletId: wallets[0]?.id || "",
-    categoryId:
-      categories.find((c) => c.type === TransactionType.EXPENSE)?.id || "",
+    categoryId: categories.find((c) => c.type === TransactionType.EXPENSE)?.id || "",
     type: TransactionType.EXPENSE as TransactionType,
     amount: "",
     date: initialTo,
@@ -83,8 +105,7 @@ export default function TransactionsClient({
   const [recurringForm, setRecurringForm] = useState({
     walletId: wallets[0]?.id || "",
     type: TransactionType.EXPENSE as TransactionType,
-    categoryId:
-      categories.find((c) => c.type === TransactionType.EXPENSE)?.id || "",
+    categoryId: categories.find((c) => c.type === TransactionType.EXPENSE)?.id || "",
     amount: "",
     cadence: RecurringCadence.MONTHLY as RecurringCadence,
     nextRun: initialTo,
@@ -97,6 +118,7 @@ export default function TransactionsClient({
   );
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [page, setPage] = useState(1);
 
   const availableCategories = useMemo(
     () => categories.filter((c) => c.type === form.type),
@@ -114,20 +136,45 @@ export default function TransactionsClient({
     }
   }, [recurringCategories, recurringForm.categoryId]);
 
-  const dateFormatter = useMemo(
-    () => new Intl.DateTimeFormat("id-ID", { timeZone: "UTC" }),
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(transactions.length / PAGE_SIZE)),
+    [transactions.length]
+  );
+
+  const paginatedTransactions = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return transactions.slice(start, start + PAGE_SIZE);
+  }, [page, transactions]);
+
+  useEffect(() => {
+    setPage((prev) => Math.min(prev, totalPages));
+  }, [totalPages]);
+
+  const updateForm = useCallback((field: keyof typeof form, value: string | TransactionType) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const updateRecurringForm = useCallback(
+    (field: keyof typeof recurringForm, value: string | TransactionType | RecurringCadence) => {
+      setRecurringForm((prev) => ({ ...prev, [field]: value }));
+    },
     []
   );
 
-  function formatCurrency(value: number) {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-    })
-      .format(value || 0)
-      .replace(/\s/g, "");
-  }
+  const updateFilters = useCallback((field: keyof typeof filters, value: string) => {
+    setFilters((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handlePageChange = useCallback(
+    (next: number) => {
+      setPage((prev) => {
+        const clamped = Math.min(Math.max(next, 1), totalPages);
+        if (clamped === prev) return prev;
+        return clamped;
+      });
+    },
+    [totalPages]
+  );
 
   async function loadTransactions(nextFilters?: typeof filters) {
     setLoading(true);
@@ -153,6 +200,7 @@ export default function TransactionsClient({
         normalizeTransaction
       );
       setTransactions(normalized);
+      setPage(1);
     } catch (error) {
       console.error(error);
       setStatus({ type: "error", message: "Tidak bisa terhubung ke server" });
@@ -229,6 +277,7 @@ export default function TransactionsClient({
       } else {
         setTransactions((prev) => [normalized, ...prev]);
         setStatus({ type: "success", message: "Transaksi tersimpan" });
+        setPage(1);
       }
 
       resetForm();
@@ -387,474 +436,655 @@ export default function TransactionsClient({
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle>Tambah / Edit Transaksi</CardTitle>
-            <CardDescription>Income & expense dengan validasi realtime.</CardDescription>
-          </div>
-          {status && (
-            <Alert
-              variant={status.type === "success" ? "success" : "error"}
-              className="sm:w-[260px]"
-            >
-              {status.message}
-            </Alert>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <label className="text-sm text-slate-300">Tipe</label>
-              <Select
-                value={form.type}
-                onChange={(e) => {
-                  const nextType = e.target.value as TransactionType;
-                  const fallbackCategory = categories.find((c) => c.type === nextType)?.id || "";
-                  setForm((prev) => ({
-                    ...prev,
-                    type: nextType,
-                    categoryId: fallbackCategory,
-                  }));
-                }}
-              >
-                <option value={TransactionType.EXPENSE}>Expense</option>
-                <option value={TransactionType.INCOME}>Income</option>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-300">Wallet</label>
-              <Select
-                value={form.walletId}
-                onChange={(e) => setForm((prev) => ({ ...prev, walletId: e.target.value }))}
-              >
-                {wallets.map((wallet) => (
-                  <option key={wallet.id} value={wallet.id}>
-                    {wallet.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-300">Kategori</label>
-              <Select
-                value={form.categoryId}
-                onChange={(e) => setForm((prev) => ({ ...prev, categoryId: e.target.value }))}
-              >
-                {availableCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-300">Jumlah</label>
-              <Input
-                type="number"
-                value={form.amount}
-                onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
-                placeholder="100000"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-300">Tanggal</label>
-              <Input
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-300">Catatan</label>
-              <Input
-                value={form.note}
-                onChange={(e) => setForm((prev) => ({ ...prev, note: e.target.value }))}
-                placeholder="opsional"
-              />
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={handleSubmit} loading={loading}>
-              {editingId ? "Simpan perubahan" : "Tambah transaksi"}
-            </Button>
-            {editingId && (
-              <Button type="button" variant="outline" onClick={resetForm}>
-                Batal edit
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <TransactionFormSection
+        status={status}
+        wallets={wallets}
+        availableCategories={availableCategories}
+        form={form}
+        editingId={editingId}
+        loading={loading}
+        onTypeChange={(type) => {
+          const fallbackCategory = categories.find((c) => c.type === type)?.id || "";
+          updateForm("type", type);
+          updateForm("categoryId", fallbackCategory);
+        }}
+        onWalletChange={(value) => updateForm("walletId", value)}
+        onCategoryChange={(value) => updateForm("categoryId", value)}
+        onAmountChange={(value) => updateForm("amount", value)}
+        onDateChange={(value) => updateForm("date", value)}
+        onNoteChange={(value) => updateForm("note", value)}
+        onSubmit={handleSubmit}
+        onReset={resetForm}
+      />
 
-      <Card>
-        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <CardTitle>Filter</CardTitle>
-            <CardDescription>Default: bulan ini</CardDescription>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 w-full md:w-auto">
-            <Input
-              type="date"
-              value={filters.from}
-              onChange={(e) => setFilters((prev) => ({ ...prev, from: e.target.value }))}
-            />
-            <Input
-              type="date"
-              value={filters.to}
-              onChange={(e) => setFilters((prev) => ({ ...prev, to: e.target.value }))}
-            />
+      <FilterSection
+        filters={filters}
+        wallets={wallets}
+        categories={categories}
+        loading={loading}
+        exporting={exporting}
+        onFilterChange={updateFilters}
+        onApply={() => loadTransactions()}
+        onExport={handleExport}
+        onReset={() => {
+          const reset = { from: initialFrom, to: initialTo, walletId: "", categoryId: "" };
+          setFilters(reset);
+          loadTransactions(reset);
+        }}
+      />
+
+      <RecurringSection
+        wallets={wallets}
+        recurringCategories={recurringCategories}
+        recurrences={recurrences}
+        recurringForm={recurringForm}
+        recurringLoading={recurringLoading}
+        onTypeChange={(value) =>
+          updateRecurringForm("type", value as TransactionType)
+        }
+        onWalletChange={(value) => updateRecurringForm("walletId", value)}
+        onCategoryChange={(value) => updateRecurringForm("categoryId", value)}
+        onAmountChange={(value) => updateRecurringForm("amount", value)}
+        onCadenceChange={(value) =>
+          updateRecurringForm("cadence", value as RecurringCadence)
+        }
+        onNextRunChange={(value) => updateRecurringForm("nextRun", value)}
+        onNoteChange={(value) => updateRecurringForm("note", value)}
+        onCreateRecurring={handleCreateRecurring}
+        onDeleteRecurring={handleDeleteRecurring}
+        onReloadRecurring={loadRecurrences}
+      />
+
+      <TransactionsList
+        transactions={paginatedTransactions}
+        total={transactions.length}
+        loading={loading}
+        editingId={editingId}
+        onEdit={startEdit}
+        onDelete={handleDelete}
+        page={page}
+        totalPages={totalPages}
+        pageSize={PAGE_SIZE}
+        onPageChange={handlePageChange}
+      />
+    </div>
+  );
+}
+
+const TransactionFormSection = memo(function TransactionFormSection({
+  status,
+  wallets,
+  availableCategories,
+  form,
+  editingId,
+  loading,
+  onTypeChange,
+  onWalletChange,
+  onCategoryChange,
+  onAmountChange,
+  onDateChange,
+  onNoteChange,
+  onSubmit,
+  onReset,
+}: {
+  status: { type: "success" | "error"; message: string } | null;
+  wallets: TransactionWallet[];
+  availableCategories: TransactionCategory[];
+  form: TransactionFormState;
+  editingId: string | null;
+  loading: boolean;
+  onTypeChange: (value: TransactionType) => void;
+  onWalletChange: (value: string) => void;
+  onCategoryChange: (value: string) => void;
+  onAmountChange: (value: string) => void;
+  onDateChange: (value: string) => void;
+  onNoteChange: (value: string) => void;
+  onSubmit: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <CardTitle>Tambah / Edit Transaksi</CardTitle>
+          <CardDescription>Income & expense dengan validasi realtime.</CardDescription>
+        </div>
+        {status && (
+          <Alert
+            variant={status.type === "success" ? "success" : "error"}
+            className="sm:w-[260px]"
+          >
+            {status.message}
+          </Alert>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Tipe</label>
             <Select
-              value={filters.walletId}
-              onChange={(e) => setFilters((prev) => ({ ...prev, walletId: e.target.value }))}
+              value={form.type}
+              onChange={(e) => onTypeChange(e.target.value as TransactionType)}
             >
-              <option value="">Semua wallet</option>
+              <option value={TransactionType.EXPENSE}>Expense</option>
+              <option value={TransactionType.INCOME}>Income</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Wallet</label>
+            <Select
+              value={form.walletId}
+              onChange={(e) => onWalletChange(e.target.value)}
+            >
               {wallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>
                   {wallet.name}
                 </option>
               ))}
             </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Kategori</label>
             <Select
-              value={filters.categoryId}
-              onChange={(e) => setFilters((prev) => ({ ...prev, categoryId: e.target.value }))}
+              value={form.categoryId}
+              onChange={(e) => onCategoryChange(e.target.value)}
             >
-              <option value="">Semua kategori</option>
-              {categories.map((cat) => (
+              {availableCategories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
                 </option>
               ))}
             </Select>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={() => loadTransactions()} loading={loading}>
-              Terapkan filter
-            </Button>
-            <Button type="button" variant="outline" onClick={handleExport} loading={exporting}>
-              Export Excel
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                const reset = { from: initialFrom, to: initialTo, walletId: "", categoryId: "" };
-                setFilters(reset);
-                loadTransactions(reset);
-              }}
-            >
-              Reset
-            </Button>
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Jumlah</label>
+            <Input
+              type="number"
+              value={form.amount}
+              onChange={(e) => onAmountChange(e.target.value)}
+              placeholder="100000"
+            />
           </div>
-        </CardHeader>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <CardTitle>Transaksi Berulang</CardTitle>
-            <CardDescription>Auto-generate pada tanggal jatuh tempo.</CardDescription>
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Tanggal</label>
+            <Input
+              type="date"
+              value={form.date}
+              onChange={(e) => onDateChange(e.target.value)}
+            />
           </div>
-          <Button type="button" variant="outline" onClick={loadRecurrences} loading={recurringLoading}>
-            Muat ulang recurring
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <label className="text-sm text-slate-300">Tipe</label>
-              <Select
-                value={recurringForm.type}
-                onChange={(e) =>
-                  setRecurringForm((prev) => ({
-                    ...prev,
-                    type: e.target.value as TransactionType,
-                  }))
-                }
-              >
-                <option value={TransactionType.EXPENSE}>Expense</option>
-                <option value={TransactionType.INCOME}>Income</option>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-300">Wallet</label>
-              <Select
-                value={recurringForm.walletId}
-                onChange={(e) => setRecurringForm((prev) => ({ ...prev, walletId: e.target.value }))}
-              >
-                {wallets.map((wallet) => (
-                  <option key={wallet.id} value={wallet.id}>
-                    {wallet.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-300">Kategori</label>
-              <Select
-                value={recurringForm.categoryId}
-                onChange={(e) =>
-                  setRecurringForm((prev) => ({ ...prev, categoryId: e.target.value }))
-                }
-              >
-                {recurringCategories.map((cat) => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-300">Nominal</label>
-              <Input
-                type="number"
-                value={recurringForm.amount}
-                onChange={(e) => setRecurringForm((prev) => ({ ...prev, amount: e.target.value }))}
-                placeholder="50000"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-300">Frekuensi</label>
-              <Select
-                value={recurringForm.cadence}
-                onChange={(e) =>
-                  setRecurringForm((prev) => ({
-                    ...prev,
-                    cadence: e.target.value as RecurringCadence,
-                  }))
-                }
-              >
-                <option value={RecurringCadence.DAILY}>Harian</option>
-                <option value={RecurringCadence.WEEKLY}>Mingguan</option>
-                <option value={RecurringCadence.MONTHLY}>Bulanan</option>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm text-slate-300">Mulai</label>
-              <Input
-                type="date"
-                value={recurringForm.nextRun}
-                onChange={(e) => setRecurringForm((prev) => ({ ...prev, nextRun: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-1 md:col-span-3">
-              <label className="text-sm text-slate-300">Catatan</label>
-              <Input
-                value={recurringForm.note}
-                onChange={(e) => setRecurringForm((prev) => ({ ...prev, note: e.target.value }))}
-                placeholder="opsional"
-              />
-            </div>
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Catatan</label>
+            <Input
+              value={form.note}
+              onChange={(e) => onNoteChange(e.target.value)}
+              placeholder="opsional"
+            />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={handleCreateRecurring} loading={recurringLoading}>
-              Simpan Recurring
-            </Button>
-          </div>
-
-          <div className="space-y-3">
-            {recurrences.length === 0 ? (
-              <p className="text-sm text-slate-400">Belum ada recurring.</p>
-            ) : (
-              recurrences.map((recurring) => (
-                <div
-                  key={recurring.id}
-                  className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold text-white">
-                      {recurring.walletName} • {recurring.categoryName}
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      {recurring.type} • {recurring.cadence} • Mulai {recurring.nextRun.slice(0, 10)}
-                    </p>
-                    <p className="text-sm text-slate-300">
-                      {formatCurrency(recurring.amount)}{" "}
-                      {recurring.note ? <span className="text-slate-400">• {recurring.note}</span> : null}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="danger"
-                    onClick={() => handleDeleteRecurring(recurring.id)}
-                    loading={recurringLoading}
-                  >
-                    Hapus
-                  </Button>
-                </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <div className="flex items-center justify-between mb-3">
-          <CardTitle>Daftar Transaksi</CardTitle>
-          <span className="text-xs text-slate-500">{transactions.length} transaksi</span>
         </div>
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-slate-400">
-                <th className="py-2">Tanggal</th>
-                <th className="py-2">Wallet</th>
-                <th className="py-2">Kategori</th>
-                <th className="py-2">Tipe</th>
-                <th className="py-2 text-right">Jumlah</th>
-                <th className="py-2">Catatan</th>
-                <th className="py-2 text-right">Aksi</th>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={onSubmit} loading={loading}>
+            {editingId ? "Simpan perubahan" : "Tambah transaksi"}
+          </Button>
+          {editingId && (
+            <Button type="button" variant="outline" onClick={onReset}>
+              Batal edit
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
+const FilterSection = memo(function FilterSection({
+  filters,
+  wallets,
+  categories,
+  loading,
+  exporting,
+  onFilterChange,
+  onApply,
+  onExport,
+  onReset,
+}: {
+  filters: { from: string; to: string; walletId: string; categoryId: string };
+  wallets: TransactionWallet[];
+  categories: TransactionCategory[];
+  loading: boolean;
+  exporting: boolean;
+  onFilterChange: (field: keyof typeof filters, value: string) => void;
+  onApply: () => void;
+  onExport: () => void;
+  onReset: () => void;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <CardTitle>Filter</CardTitle>
+          <CardDescription>Default: bulan ini</CardDescription>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 w-full md:w-auto">
+          <Input
+            type="date"
+            value={filters.from}
+            onChange={(e) => onFilterChange("from", e.target.value)}
+          />
+          <Input
+            type="date"
+            value={filters.to}
+            onChange={(e) => onFilterChange("to", e.target.value)}
+          />
+          <Select
+            value={filters.walletId}
+            onChange={(e) => onFilterChange("walletId", e.target.value)}
+          >
+            <option value="">Semua wallet</option>
+            {wallets.map((wallet) => (
+              <option key={wallet.id} value={wallet.id}>
+                {wallet.name}
+              </option>
+            ))}
+          </Select>
+          <Select
+            value={filters.categoryId}
+            onChange={(e) => onFilterChange("categoryId", e.target.value)}
+          >
+            <option value="">Semua kategori</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" onClick={onApply} loading={loading}>
+            Terapkan filter
+          </Button>
+          <Button type="button" variant="outline" onClick={onExport} loading={exporting}>
+            Export Excel
+          </Button>
+          <Button type="button" variant="ghost" onClick={onReset}>
+            Reset
+          </Button>
+        </div>
+      </CardHeader>
+    </Card>
+  );
+});
+
+const RecurringSection = memo(function RecurringSection({
+  wallets,
+  recurringCategories,
+  recurrences,
+  recurringForm,
+  recurringLoading,
+  onTypeChange,
+  onWalletChange,
+  onCategoryChange,
+  onAmountChange,
+  onCadenceChange,
+  onNextRunChange,
+  onNoteChange,
+  onCreateRecurring,
+  onDeleteRecurring,
+  onReloadRecurring,
+}: {
+  wallets: TransactionWallet[];
+  recurringCategories: TransactionCategory[];
+  recurrences: RecurringClientData[];
+  recurringForm: RecurringFormState;
+  recurringLoading: boolean;
+  onTypeChange: (value: TransactionType) => void;
+  onWalletChange: (value: string) => void;
+  onCategoryChange: (value: string) => void;
+  onAmountChange: (value: string) => void;
+  onCadenceChange: (value: RecurringCadence) => void;
+  onNextRunChange: (value: string) => void;
+  onNoteChange: (value: string) => void;
+  onCreateRecurring: () => void;
+  onDeleteRecurring: (id: string) => void;
+  onReloadRecurring: () => void;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div>
+          <CardTitle>Transaksi Berulang</CardTitle>
+          <CardDescription>Auto-generate pada tanggal jatuh tempo.</CardDescription>
+        </div>
+        <Button type="button" variant="outline" onClick={onReloadRecurring} loading={recurringLoading}>
+          Muat ulang recurring
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Tipe</label>
+            <Select value={recurringForm.type} onChange={(e) => onTypeChange(e.target.value as TransactionType)}>
+              <option value={TransactionType.EXPENSE}>Expense</option>
+              <option value={TransactionType.INCOME}>Income</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Wallet</label>
+            <Select value={recurringForm.walletId} onChange={(e) => onWalletChange(e.target.value)}>
+              {wallets.map((wallet) => (
+                <option key={wallet.id} value={wallet.id}>
+                  {wallet.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Kategori</label>
+            <Select
+              value={recurringForm.categoryId}
+              onChange={(e) => onCategoryChange(e.target.value)}
+            >
+              {recurringCategories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Nominal</label>
+            <Input
+              type="number"
+              value={recurringForm.amount}
+              onChange={(e) => onAmountChange(e.target.value)}
+              placeholder="50000"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Frekuensi</label>
+            <Select value={recurringForm.cadence} onChange={(e) => onCadenceChange(e.target.value as RecurringCadence)}>
+              <option value={RecurringCadence.DAILY}>Harian</option>
+              <option value={RecurringCadence.WEEKLY}>Mingguan</option>
+              <option value={RecurringCadence.MONTHLY}>Bulanan</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-slate-300">Mulai</label>
+            <Input
+              type="date"
+              value={recurringForm.nextRun}
+              onChange={(e) => onNextRunChange(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1 md:col-span-3">
+            <label className="text-sm text-slate-300">Catatan</label>
+            <Input
+              value={recurringForm.note || ""}
+              onChange={(e) => onNoteChange(e.target.value)}
+              placeholder="opsional"
+            />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={onCreateRecurring} loading={recurringLoading}>
+            Simpan Recurring
+          </Button>
+        </div>
+
+        <div className="space-y-3">
+          {recurrences.length === 0 ? (
+            <p className="text-sm text-slate-400">Belum ada recurring.</p>
+          ) : (
+            recurrences.map((recurring) => (
+              <div
+                key={recurring.id}
+                className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+              >
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-white">
+                    {recurring.walletName} • {recurring.categoryName}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    {recurring.type} • {recurring.cadence} • Mulai {recurring.nextRun.slice(0, 10)}
+                  </p>
+                  <p className="text-sm text-slate-300">
+                    {formatCurrency(recurring.amount)}{" "}
+                    {recurring.note ? <span className="text-slate-400">• {recurring.note}</span> : null}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="danger"
+                  onClick={() => onDeleteRecurring(recurring.id)}
+                  loading={recurringLoading}
+                >
+                  Hapus
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
+
+const TransactionsList = memo(function TransactionsList({
+  transactions,
+  total,
+  loading,
+  editingId,
+  onEdit,
+  onDelete,
+  page,
+  totalPages,
+  pageSize,
+  onPageChange,
+}: {
+  transactions: TransactionClientData[];
+  total: number;
+  loading: boolean;
+  editingId: string | null;
+  onEdit: (tx: TransactionClientData) => void;
+  onDelete: (id: string) => void;
+  page: number;
+  totalPages: number;
+  pageSize: number;
+  onPageChange: (page: number) => void;
+}) {
+  const showingFrom = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const showingTo = Math.min(page * pageSize, total);
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <CardTitle>Daftar Transaksi</CardTitle>
+        <span className="text-xs text-slate-500">{total} transaksi</span>
+      </div>
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-slate-400">
+              <th className="py-2">Tanggal</th>
+              <th className="py-2">Wallet</th>
+              <th className="py-2">Kategori</th>
+              <th className="py-2">Tipe</th>
+              <th className="py-2 text-right">Jumlah</th>
+              <th className="py-2">Catatan</th>
+              <th className="py-2 text-right">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && transactions.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="py-4 text-center text-slate-400">
+                  <span className="inline-flex items-center gap-2 justify-center">
+                    <Spinner size="sm" /> Memuat transaksi...
+                  </span>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {loading && transactions.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-4 text-center text-slate-400">
-                    <span className="inline-flex items-center gap-2 justify-center">
-                      <Spinner size="sm" /> Memuat transaksi...
+            ) : transactions.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="py-4 text-center text-slate-400">
+                  Tidak ada transaksi.
+                </td>
+              </tr>
+            ) : (
+              transactions.map((tx) => (
+                <tr key={tx.id} className="border-t border-slate-800">
+                  <td className="py-2 text-slate-300">{formatDate(tx.date)}</td>
+                  <td className="py-2">{tx.walletName}</td>
+                  <td className="py-2">{tx.categoryName}</td>
+                  <td className="py-2">
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full ${
+                        tx.type === TransactionType.INCOME
+                          ? "bg-emerald-500/10 text-emerald-300"
+                          : "bg-rose-500/10 text-rose-300"
+                      }`}
+                    >
+                      {tx.type}
                     </span>
                   </td>
-                </tr>
-              ) : transactions.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-4 text-center text-slate-400">
-                    Tidak ada transaksi.
-                  </td>
-                </tr>
-              ) : (
-                transactions.map((tx) => (
-                  <tr key={tx.id} className="border-t border-slate-800">
-                    <td className="py-2 text-slate-300">
-                      {dateFormatter.format(new Date(tx.date))}
-                    </td>
-                    <td className="py-2">{tx.walletName}</td>
-                    <td className="py-2">{tx.categoryName}</td>
-                    <td className="py-2">
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full ${
-                          tx.type === TransactionType.INCOME
-                            ? "bg-emerald-500/10 text-emerald-300"
-                            : "bg-rose-500/10 text-rose-300"
-                        }`}
-                      >
-                        {tx.type}
-                      </span>
-                    </td>
-                    <td className="py-2 text-right font-semibold">
-                      <span
-                        className={
-                          tx.type === TransactionType.INCOME
-                            ? "text-emerald-300"
-                            : "text-rose-300"
-                        }
-                      >
-                        {formatCurrency(tx.amount)}
-                      </span>
-                    </td>
-                    <td className="py-2 text-slate-400 whitespace-pre-line pl-2">
-                      {tx.note}
-                    </td>
-                    <td className="py-2 text-right space-x-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => startEdit(tx)}
-                        className="px-3 py-1"
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="danger"
-                        onClick={() => handleDelete(tx.id)}
-                        className="px-3 py-1"
-                        loading={loading && editingId === tx.id}
-                      >
-                        Hapus
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="sm:hidden space-y-2">
-          {loading && transactions.length === 0 ? (
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-              <Spinner size="sm" /> Memuat transaksi...
-            </div>
-          ) : transactions.length === 0 ? (
-            <p className="text-sm text-slate-400">Tidak ada transaksi.</p>
-          ) : (
-            transactions.map((tx) => (
-              <div
-                key={tx.id}
-                className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 space-y-1"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-white">{tx.walletName}</p>
-                    <p className="text-xs text-slate-400">
-                      {tx.categoryName} • {dateFormatter.format(new Date(tx.date))}
-                    </p>
-                  </div>
-                  <span
-                    className={`px-2 py-1 text-xs rounded-full ${
-                      tx.type === TransactionType.INCOME
-                        ? "bg-emerald-500/10 text-emerald-300"
-                        : "bg-rose-500/10 text-rose-300"
-                    }`}
-                  >
-                    {tx.type}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-base font-semibold">
+                  <td className="py-2 text-right font-semibold">
                     <span
                       className={
-                        tx.type === TransactionType.INCOME ? "text-emerald-300" : "text-rose-300"
+                        tx.type === TransactionType.INCOME
+                          ? "text-emerald-300"
+                          : "text-rose-300"
                       }
                     >
                       {formatCurrency(tx.amount)}
                     </span>
-                  </p>
-                  <div className="flex gap-2">
+                  </td>
+                  <td className="py-2 text-slate-400 whitespace-pre-line pl-2">{tx.note}</td>
+                  <td className="py-2 text-right space-x-2">
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => startEdit(tx)}
-                      className="px-3 py-1 text-xs"
+                      onClick={() => onEdit(tx)}
+                      className="px-3 py-1"
                     >
                       Edit
                     </Button>
                     <Button
                       type="button"
                       variant="danger"
-                      onClick={() => handleDelete(tx.id)}
-                      className="px-3 py-1 text-xs"
+                      onClick={() => onDelete(tx.id)}
+                      className="px-3 py-1"
                       loading={loading && editingId === tx.id}
                     >
                       Hapus
                     </Button>
-                  </div>
-                </div>
-                {tx.note && <p className="text-xs text-slate-400 mt-1">{tx.note}</p>}
-              </div>
-            ))
-          )}
-        </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
-        {loading && transactions.length > 0 && (
-          <div className="mt-3 flex items-center gap-2 text-sm text-slate-400">
-            <Spinner size="sm" /> Memproses...
+      <div className="sm:hidden space-y-2">
+        {loading && transactions.length === 0 ? (
+          <div className="flex items-center gap-2 text-sm text-slate-400">
+            <Spinner size="sm" /> Memuat transaksi...
           </div>
+        ) : transactions.length === 0 ? (
+          <p className="text-sm text-slate-400">Tidak ada transaksi.</p>
+        ) : (
+          transactions.map((tx) => (
+            <div
+              key={tx.id}
+              className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 space-y-1"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-white">{tx.walletName}</p>
+                  <p className="text-xs text-slate-400">
+                    {tx.categoryName} • {formatDate(tx.date)}
+                  </p>
+                </div>
+                <span
+                  className={`px-2 py-1 text-xs rounded-full ${
+                    tx.type === TransactionType.INCOME
+                      ? "bg-emerald-500/10 text-emerald-300"
+                      : "bg-rose-500/10 text-rose-300"
+                  }`}
+                >
+                  {tx.type}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-base font-semibold">
+                  <span
+                    className={
+                      tx.type === TransactionType.INCOME ? "text-emerald-300" : "text-rose-300"
+                    }
+                  >
+                    {formatCurrency(tx.amount)}
+                  </span>
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => onEdit(tx)}
+                    className="px-3 py-1 text-xs"
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="danger"
+                    onClick={() => onDelete(tx.id)}
+                    className="px-3 py-1 text-xs"
+                    loading={loading && editingId === tx.id}
+                  >
+                    Hapus
+                  </Button>
+                </div>
+              </div>
+              {tx.note && <p className="text-xs text-slate-400 mt-1">{tx.note}</p>}
+            </div>
+          ))
         )}
-      </Card>
-    </div>
+      </div>
+
+      {loading && transactions.length > 0 && (
+        <div className="mt-3 flex items-center gap-2 text-sm text-slate-400">
+          <Spinner size="sm" /> Memproses...
+        </div>
+      )}
+
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs text-slate-500">
+          Menampilkan {showingFrom}-{showingTo} dari {total}
+        </p>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page <= 1}
+          >
+            Prev
+          </Button>
+          <span className="text-xs text-slate-400">
+            Hal {page} / {totalPages}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    </Card>
   );
-}
+});
 
 type ApiTransaction = {
   id: string;
