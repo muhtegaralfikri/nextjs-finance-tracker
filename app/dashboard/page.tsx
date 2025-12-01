@@ -7,6 +7,7 @@ import { ensureDefaultCategories } from "@/lib/categories";
 import { getBudgetsWithProgress } from "@/lib/budgets";
 import { getGoalsWithProgress } from "@/lib/goals";
 import AppShell from "@/components/AppShell";
+import { WalletTypeLabels } from "@/lib/financeTypes";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -94,7 +95,7 @@ export default async function DashboardPage() {
                     <div>
                       <p className="font-semibold">{wallet.name}</p>
                       <p className="text-xs text-slate-400">
-                        {wallet.type} • {wallet.currency}
+                        {WalletTypeLabels[wallet.type] || wallet.type} • {wallet.currency}
                       </p>
                     </div>
                     <p className="font-semibold text-emerald-400">

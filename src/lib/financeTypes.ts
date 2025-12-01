@@ -25,3 +25,11 @@ export const WalletType = {
   OTHER: "OTHER",
 } as const;
 export type WalletType = (typeof WalletType)[keyof typeof WalletType];
+
+export const WalletTypeLabels: Record<WalletType, string> = {
+  CASH: "Cash",
+  BANK: "Bank",
+  E_WALLET: "E Wallet",
+  INVESTMENT: "Investasi",
+  OTHER: "Lainnya",
+};

@@ -7,7 +7,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import Input from "@/components/ui/input";
 import Select from "@/components/ui/select";
 import Spinner from "@/components/ui/spinner";
-import { WalletType } from "@/lib/financeTypes";
+import { WalletType, WalletTypeLabels } from "@/lib/financeTypes";
 import { formatCurrency } from "@/lib/currency";
 
 export type WalletClientData = {
@@ -20,11 +20,11 @@ export type WalletClientData = {
 };
 
 const walletTypeOptions: Array<{ value: WalletType; label: string }> = [
-  { value: WalletType.CASH, label: "Cash" },
-  { value: WalletType.BANK, label: "Bank" },
-  { value: WalletType.E_WALLET, label: "E Wallet" },
-  { value: WalletType.INVESTMENT, label: "Investasi" },
-  { value: WalletType.OTHER, label: "Lainnya" },
+  { value: WalletType.CASH, label: WalletTypeLabels.CASH },
+  { value: WalletType.BANK, label: WalletTypeLabels.BANK },
+  { value: WalletType.E_WALLET, label: WalletTypeLabels.E_WALLET },
+  { value: WalletType.INVESTMENT, label: WalletTypeLabels.INVESTMENT },
+  { value: WalletType.OTHER, label: WalletTypeLabels.OTHER },
 ];
 
 export default function WalletsClient({
@@ -267,7 +267,7 @@ export default function WalletsClient({
                   <div>
                     <p className="text-white font-semibold">{wallet.name}</p>
                     <p className="text-xs text-slate-400">
-                      {wallet.type} • {wallet.currency}
+                      {WalletTypeLabels[wallet.type] || wallet.type} • {wallet.currency}
                     </p>
                     <p className="text-sm text-emerald-300 mt-1">
                       Saldo: {formatCurrency(wallet.balance)}
