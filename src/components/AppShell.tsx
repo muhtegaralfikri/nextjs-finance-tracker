@@ -83,7 +83,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   FT
                 </div>
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-emerald-300/70">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300/80">
                     Personal Finance
                   </p>
                   <p className="text-base font-semibold text-white">{activeLabel}</p>
