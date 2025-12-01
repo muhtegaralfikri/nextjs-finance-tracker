@@ -6,9 +6,9 @@ export default function Home() {
       className="relative min-h-screen overflow-hidden"
       style={{ background: "var(--bg-app)", color: "var(--text-primary)" }}
     >
-      <div className="relative mx-auto max-w-5xl px-6 py-16">
-        <div className="flex justify-end">
-          <ThemeToggle />
+      <div className="relative mx-auto max-w-5xl px-6 py-10 sm:py-16">
+        <div className="absolute right-4 top-4 sm:static sm:flex sm:justify-end">
+          <ThemeToggle className="h-10 w-10 sm:h-auto sm:w-auto" />
         </div>
         <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
