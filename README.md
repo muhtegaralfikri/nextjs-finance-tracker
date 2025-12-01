@@ -1,6 +1,6 @@
 # Personal Finance Tracker
 
-Next.js App Router + Prisma + Auth.js finance tracker untuk wallets, transaksi, budgets, dan goals.
+Next.js App Router + Prisma + Auth.js finance tracker untuk wallets, transaksi, budgets, goals — dengan UI responsif dan optimasi performa client/server.
 
 ## Tech Stack
 - Next.js 16 (App Router, TypeScript)
@@ -11,11 +11,12 @@ Next.js App Router + Prisma + Auth.js finance tracker untuk wallets, transaksi, 
 ## Fitur
 - Auth protected pages (login/register, redirect jika belum login).
 - Wallets, transaksi dengan filter, budgets per kategori, dan savings goals.
-- Skeleton loading dinamis (mode terang/gelap otomatis).
-- Tema default terang, toggle tema di header.
+- Skeleton loading dinamis (mode terang/gelap otomatis), toggle tema di header.
 - Quick actions Profile & Settings di sidebar + bottom nav mobile; halaman `/profile` & `/settings` tersedia.
 - Format Rupiah tanpa spasi antara simbol dan nominal.
 - Transaksi berulang dengan auto-posting, ekspor transaksi ke Excel, dan seed demo siap pakai.
+- Tabel transaksi dengan paginasi server, caching ringan, dan ekspor streaming.
+- Semua tombol punya efek hover/press yang terasa di mobile; halaman landing/login/register ditata ulang dengan Manrope.
 
 ## Struktur Singkat
 ```
@@ -52,3 +53,5 @@ AUTH_SECRET="your-random-secret"
 ## Konvensi
 - Protected route: `const session = await auth(); if (!session?.user) redirect("/login");`
 - UI berbasis komponen di `src/components/ui/` (button, input, card, select, alert, spinner, skeleton).
+- Tipe shared: gunakan `src/lib/financeTypes.ts` (hindari impor enum Prisma di client).
+- Formatter: gunakan `src/lib/currency.ts` dan `src/lib/date.ts` untuk pemformatan konsisten.
