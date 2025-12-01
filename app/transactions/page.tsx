@@ -76,6 +76,7 @@ export default async function TransactionsPage() {
     name: w.name,
     type: w.type,
     currency: w.currency,
+    balance: decimalToNumber(w.balance),
   }));
 
   const categories: TransactionCategory[] = categoriesData.map((c) => ({

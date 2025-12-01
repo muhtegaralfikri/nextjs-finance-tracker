@@ -29,6 +29,9 @@ type AllowancePlan = {
   spentSoFar: number;
   reservedGoal: number;
   dailySaving: number;
+  reservedRemaining: number;
+  reservedProgress: number;
+  completedSaving: number;
 };
 
 export default function DailyAllowanceClient({
@@ -46,6 +49,7 @@ export default function DailyAllowanceClient({
   const [dailyTarget, setDailyTarget] = useState<string>("");
   const [goalReserve, setGoalReserve] = useState<string>("");
   const [days, setDays] = useState<DailyExpense[]>(initialDays);
+  const [goalDeposits, setGoalDeposits] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(
     null
   );
@@ -61,6 +65,18 @@ export default function DailyAllowanceClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  function toggleGoalDeposit(date: string) {
+    setGoalDeposits((prev) => {
+      const next = new Set(prev);
+      if (next.has(date)) {
+        next.delete(date);
+      } else {
+        next.add(date);
+      }
+      return next;
+    });
+  }
+
   const plan = useMemo(
     () =>
       buildAllowancePlan(
@@ -68,9 +84,10 @@ export default function DailyAllowanceClient({
         Number(totalBudget) || 0,
         Number(dailyTarget) || 0,
         Number(goalReserve) || 0,
+        goalDeposits.size,
         todayKey
       ),
-    [dailyTarget, days, goalReserve, todayKey, totalBudget]
+    [dailyTarget, days, goalReserve, goalDeposits, todayKey, totalBudget]
   );
 
   async function handleFetch() {
@@ -192,6 +209,15 @@ export default function DailyAllowanceClient({
         <div className="text-sm text-slate-400">
           Total terpakai bulan ini (kategori terpilih):{" "}
           <span className="text-white font-semibold">{formatCurrency(plan.spentSoFar)}</span>
+          {plan.reservedGoal > 0 && (
+            <>
+              {" • "}
+              <span className="text-slate-300">
+                Setoran goal tercatat: {formatCurrency(plan.completedSaving)} /{" "}
+                {formatCurrency(plan.reservedGoal)} ({plan.reservedProgress}%)
+              </span>
+            </>
+          )}
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 gap-2">
@@ -200,28 +226,59 @@ export default function DailyAllowanceClient({
               key={day.date}
               className={`rounded-xl border px-3 py-2 transition-colors ${
                 day.status === "ok"
-                  ? "border-emerald-600/70 bg-emerald-500/10"
-                  : day.status === "over"
-                  ? "border-rose-600/70 bg-rose-500/10"
-                  : "border-slate-800 bg-slate-900/50"
+                  ? "border-emerald-600/70 bg-emerald-500/10 text-emerald-100"
+                : day.status === "over"
+                  ? "border-rose-400 bg-rose-100 text-rose-800"
+                  : "border-[#cbd5e1] bg-[#e2e8f0] text-slate-800"
               }`}
             >
-              <div className="flex items-center justify-between text-xs text-slate-300">
-                <span className="font-semibold">{Number(day.date.split("-")[2])}</span>
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold">
+                  {Number(day.date.split("-")[2])}
+                </span>
                 <span
                   className={
                     day.status === "ok"
-                      ? "text-emerald-300"
+                      ? "text-emerald-200"
                       : day.status === "over"
-                      ? "text-rose-300"
-                      : "text-slate-400"
+                      ? "text-rose-700"
+                      : "text-slate-600"
                   }
                 >
                   {day.status === "ok" ? "On track" : day.status === "over" ? "Over" : "..." }
                 </span>
               </div>
-              <p className="mt-1 text-xs text-slate-400">Limit: {formatCurrency(day.planned)}</p>
-              <p className="text-xs text-slate-300">Terpakai: {formatCurrency(day.spent)}</p>
+              <p
+                className={`mt-1 text-xs font-semibold ${
+                  day.status === "over" ? "text-rose-800" : ""
+                }`}
+              >
+                Limit: {formatCurrency(day.planned)}
+              </p>
+              <p
+                className={`text-xs font-semibold ${
+                  day.status === "over" ? "text-rose-800" : ""
+                }`}
+              >
+                Terpakai: {formatCurrency(day.spent)}
+              </p>
+              {plan.dailySaving > 0 && day.date <= todayKey && (
+                <button
+                  type="button"
+                  onClick={() => toggleGoalDeposit(day.date)}
+                  className={`mt-2 w-full rounded-md border px-2 py-1 text-[11px] font-semibold transition ${
+                    goalDeposits.has(day.date)
+                      ? "border-emerald-500 bg-emerald-100 text-emerald-800"
+                      : day.status === "over"
+                      ? "border-rose-300 bg-white/80 text-rose-800 hover:bg-rose-50"
+                      : day.status === "ok"
+                      ? "border-emerald-300 bg-white/80 text-emerald-800 hover:bg-emerald-50"
+                      : "border-slate-300 bg-white/80 text-slate-800 hover:bg-slate-100"
+                  }`}
+                >
+                  {goalDeposits.has(day.date) ? "Sudah setor goal" : "Setor goal hari ini"}
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -235,6 +292,7 @@ function buildAllowancePlan(
   totalBudgetInput: number,
   dailyTargetInput: number,
   goalReserveInput: number,
+  goalDepositCount: number,
   todayKey: string
 ): AllowancePlan {
   if (days.length === 0) {
@@ -248,6 +306,9 @@ function buildAllowancePlan(
       spentSoFar: 0,
       reservedGoal: 0,
       dailySaving: 0,
+      reservedRemaining: 0,
+      reservedProgress: 0,
+      completedSaving: 0,
     };
   }
 
@@ -288,6 +349,10 @@ function buildAllowancePlan(
   const remainingBudget = Math.max(0, resolvedBudget - spentSoFar);
   const dailySaving =
     reservedGoal > 0 && days.length > 0 ? Math.ceil(reservedGoal / days.length) : 0;
+  const completedSaving = Math.min(reservedGoal, goalDepositCount * dailySaving);
+  const reservedRemaining = Math.max(0, reservedGoal - completedSaving);
+  const reservedProgress =
+    reservedGoal === 0 ? 0 : Math.round((completedSaving / reservedGoal) * 100);
 
   return {
     days: plannedDays,
@@ -299,6 +364,9 @@ function buildAllowancePlan(
     spentSoFar,
     reservedGoal,
     dailySaving,
+    reservedRemaining,
+    reservedProgress,
+    completedSaving,
   };
 }
 

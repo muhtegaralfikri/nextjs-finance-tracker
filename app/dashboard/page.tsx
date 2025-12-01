@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -32,6 +33,14 @@ export default async function DashboardPage() {
   });
   const budgets = await getBudgetsWithProgress(userId);
   const goals = await getGoalsWithProgress(userId);
+  const trendFrom = new Date();
+  trendFrom.setDate(trendFrom.getDate() - 13);
+  const trendTransactions = await prisma.transaction.findMany({
+    where: { userId, date: { gte: trendFrom } },
+    select: { type: true, amount: true, date: true },
+    orderBy: { date: "asc" },
+  });
+  const trend = buildTrendSeries(trendTransactions, trendFrom);
 
   return (
     <AppShell>
@@ -67,6 +76,12 @@ export default async function DashboardPage() {
             value={formatCurrency(summary.net)}
             accent={summary.net >= 0 ? "from-emerald-500/80 to-emerald-400/60" : "from-amber-500/80 to-amber-400/60"}
           />
+        </section>
+
+        {/* --- TREN 14 HARI --- */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <SparklineCard title="Income 14 hari" total={summary.totalIncome} series={trend.income} />
+          <SparklineCard title="Expense 14 hari" total={summary.totalExpense} series={trend.expense} variant="expense" />
         </section>
 
         {/* --- WALLETS & CATEGORIES SECTION --- */}
@@ -324,6 +339,35 @@ function formatCurrency(value: number) {
     .replace(/\s/g, "");
 }
 
+function buildTrendSeries(
+  txs: { type: string; amount: Prisma.Decimal | number; date: Date }[],
+  from: Date
+) {
+  const days = Array.from({ length: 14 }, (_, idx) => {
+    const d = new Date(from);
+    d.setDate(from.getDate() + idx);
+    return d.toISOString().split("T")[0];
+  });
+
+  const incomeMap = new Map<string, number>();
+  const expenseMap = new Map<string, number>();
+
+  txs.forEach((tx) => {
+    const key = tx.date.toISOString().split("T")[0];
+    const amountNum = decimalToNumber(tx.amount);
+    if (tx.type === "INCOME") {
+      incomeMap.set(key, (incomeMap.get(key) || 0) + amountNum);
+    } else {
+      expenseMap.set(key, (expenseMap.get(key) || 0) + amountNum);
+    }
+  });
+
+  const income = days.map((d) => incomeMap.get(d) || 0);
+  const expense = days.map((d) => expenseMap.get(d) || 0);
+
+  return { days, income, expense };
+}
+
 function StatCard({
   title,
   value,
@@ -416,6 +460,53 @@ function CategoryPie({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function SparklineCard({
+  title,
+  total,
+  series,
+  variant = "income",
+}: {
+  title: string;
+  total: number;
+  series: number[];
+  variant?: "income" | "expense";
+}) {
+  const max = Math.max(...series, 1);
+  const points = series.map((value, idx) => {
+    const x = (idx / Math.max(series.length - 1, 1)) * 100;
+    const y = 100 - (value / max) * 100;
+    return `${x},${y}`;
+  });
+
+  const color = variant === "income" ? "#34d399" : "#f472b6";
+
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <p className="text-xs text-slate-400">{title}</p>
+          <p className="text-lg font-semibold text-white">{formatCurrency(total)}</p>
+        </div>
+        <span className="text-[11px] text-slate-500">14 hari</span>
+      </div>
+      <svg viewBox="0 0 100 40" className="w-full h-16">
+        <polyline
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          points={points.length ? points.map((p) => p.replace(",", " ")).join(" ") : "0,100 100,100"}
+        />
+        {points.map((pt, idx) => {
+          const [x, y] = pt.split(",").map(Number);
+          return (
+            <circle key={idx} cx={x} cy={y} r="1.6" fill={color} opacity="0.8" />
+          );
+        })}
+      </svg>
     </div>
   );
 }

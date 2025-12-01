@@ -17,6 +17,7 @@ export type TransactionWallet = {
   name: string;
   type: string;
   currency: string;
+  balance?: number;
 };
 
 export type TransactionCategory = {
@@ -197,6 +198,11 @@ export default function TransactionsClient({
 
   const filterDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const [debouncedFilters, setDebouncedFiltersState] = useState<FiltersState>(filters);
+  const walletBalanceMap = useMemo(() => {
+    const map = new Map<string, number>();
+    wallets.forEach((w) => map.set(w.id, Number(w.balance ?? 0)));
+    return map;
+  }, [wallets]);
 
   const fetchTransactions = useCallback(
     async (filtersToUse: FiltersState, pageToUse: number) => {
@@ -504,6 +510,17 @@ export default function TransactionsClient({
     }
     if (transferForm.fee && Number(transferForm.fee) < 0) {
       setStatus({ type: "error", message: "Biaya admin tidak boleh negatif" });
+      return;
+    }
+
+    const amountNumber = Number(transferForm.amount);
+    const feeNumber = transferForm.fee ? Number(transferForm.fee) : 0;
+    const balance = walletBalanceMap.get(transferForm.fromWalletId) ?? 0;
+    if (balance < amountNumber + feeNumber) {
+      setStatus({
+        type: "error",
+        message: "Saldo wallet asal tidak cukup untuk nominal + biaya.",
+      });
       return;
     }
 
@@ -894,6 +911,11 @@ const TransferSection = memo(function TransferSection({
   onChange: (field: keyof TransferFormState, value: string) => void;
   onSubmit: () => void;
 }) {
+  const getBalance = useCallback(
+    (id: string) => wallets.find((w) => w.id === id)?.balance ?? 0,
+    [wallets]
+  );
+
   return (
     <Card>
       <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -912,10 +934,13 @@ const TransferSection = memo(function TransferSection({
             >
               {wallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>
-                  {wallet.name}
+                  {wallet.name} ({formatCurrency(wallet.balance ?? 0)})
                 </option>
               ))}
             </Select>
+            <p className="text-[11px] text-slate-500">
+              Saldo: {formatCurrency(getBalance(transferForm.fromWalletId))}
+            </p>
           </div>
           <div className="space-y-1">
             <label className="text-sm text-slate-300">Ke Wallet</label>
@@ -925,10 +950,13 @@ const TransferSection = memo(function TransferSection({
             >
               {wallets.map((wallet) => (
                 <option key={wallet.id} value={wallet.id}>
-                  {wallet.name}
+                  {wallet.name} ({formatCurrency(wallet.balance ?? 0)})
                 </option>
               ))}
             </Select>
+            <p className="text-[11px] text-slate-500">
+              Saldo: {formatCurrency(getBalance(transferForm.toWalletId))}
+            </p>
           </div>
           <div className="space-y-1">
             <label className="text-sm text-slate-300">Tanggal</label>
