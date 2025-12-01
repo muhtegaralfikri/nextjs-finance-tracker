@@ -10,6 +10,7 @@ import Spinner from "@/components/ui/spinner";
 import { CategoryType, RecurringCadence, TransactionType } from "@/lib/financeTypes";
 import { formatCurrency } from "@/lib/currency";
 import { formatDate } from "@/lib/date";
+import { measureAsync, reportMetric } from "@/lib/metrics";
 
 export type TransactionWallet = {
   id: string;
@@ -138,6 +139,7 @@ export default function TransactionsClient({
   );
   const recurrenceCacheRef = useRef<{ data: RecurringClientData[]; ts: number } | null>(null);
   const RECURRENCE_CACHE_TTL = 60_000;
+  const [lastFetchMs, setLastFetchMs] = useState<number | null>(null);
 
   const availableCategories = useMemo(
     () => categories.filter((c) => c.type === form.type),
@@ -198,22 +200,29 @@ export default function TransactionsClient({
       setStatus(null);
 
       try {
-        const res = await fetch(`/api/transactions?${params.toString()}`);
-        if (!res.ok) {
-          const data = await res.json().catch(() => null);
-          setStatus({ type: "error", message: data?.error || "Gagal memuat transaksi" });
-          return;
-        }
-        const data = await res.json();
-        const normalized: TransactionClientData[] = (data.transactions || []).map(
+        const { result, duration } = await measureAsync(
+          "transactions_fetch",
+          async () => {
+            const res = await fetch(`/api/transactions?${params.toString()}`);
+            if (!res.ok) {
+              const data = await res.json().catch(() => null);
+              throw new Error(data?.error || "Gagal memuat transaksi");
+            }
+            return res.json();
+          },
+          { page: pageToUse, hasCache: Boolean(cached) }
+        );
+
+        const normalized: TransactionClientData[] = (result.transactions || []).map(
           normalizeTransaction
         );
-        const nextState = { transactions: normalized, total: data.total || normalized.length };
+        const nextState = { transactions: normalized, total: result.total || normalized.length };
         cacheRef.current.set(key, nextState);
         setTransactionsData(nextState);
+        setLastFetchMs(duration);
       } catch (error) {
         console.error(error);
-        setStatus({ type: "error", message: "Tidak bisa terhubung ke server" });
+        setStatus({ type: "error", message: error instanceof Error ? error.message : "Tidak bisa terhubung ke server" });
       } finally {
         setIsFetching(false);
       }
@@ -261,21 +270,28 @@ export default function TransactionsClient({
 
     setRecurringLoading(true);
     try {
-      const res = await fetch("/api/recurring");
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setStatus({ type: "error", message: data?.error || "Gagal memuat transaksi berulang" });
-        return;
-      }
-      const data = await res.json();
-      const normalizedRecurrences: RecurringClientData[] = (data.recurrences || []).map(
+      const { result, duration } = await measureAsync(
+        "recurring_fetch",
+        async () => {
+          const res = await fetch("/api/recurring");
+          if (!res.ok) {
+            const data = await res.json().catch(() => null);
+            throw new Error(data?.error || "Gagal memuat transaksi berulang");
+          }
+          return res.json();
+        },
+        { hasCache: Boolean(cached) }
+      );
+
+      const normalizedRecurrences: RecurringClientData[] = (result.recurrences || []).map(
         normalizeRecurring
       );
       recurrenceCacheRef.current = { data: normalizedRecurrences, ts: Date.now() };
       setRecurrences(normalizedRecurrences);
+      reportMetric({ name: "recurring_fetch_done", duration, meta: { count: normalizedRecurrences.length } });
     } catch (error) {
       console.error(error);
-      setStatus({ type: "error", message: "Tidak bisa memuat recurring" });
+      setStatus({ type: "error", message: error instanceof Error ? error.message : "Tidak bisa memuat recurring" });
     } finally {
       setRecurringLoading(false);
     }
@@ -464,23 +480,29 @@ export default function TransactionsClient({
       if (filters.walletId) params.set("walletId", filters.walletId);
       if (filters.categoryId) params.set("categoryId", filters.categoryId);
 
-      const res = await fetch(`/api/transactions/export?${params.toString()}`);
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setStatus({ type: "error", message: data?.error || "Gagal mengekspor Excel" });
-        return;
-      }
-      const blob = await res.blob();
+      const exportTask = async () => {
+        const res = await fetch(`/api/transactions/export?${params.toString()}`);
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          throw new Error(data?.error || "Gagal mengekspor Excel");
+        }
+        return res.blob();
+      };
+
+      const { result: blob, duration } = await measureAsync("transactions_export", exportTask);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.download = "transactions.xlsx";
-      link.click();
-      window.URL.revokeObjectURL(url);
+      requestIdleCallback(() => {
+        link.click();
+        window.URL.revokeObjectURL(url);
+      });
+      reportMetric({ name: "transactions_export_done", duration, meta: { size: blob.size } });
       setStatus({ type: "success", message: "Berhasil ekspor Excel" });
     } catch (error) {
       console.error(error);
-      setStatus({ type: "error", message: "Tidak bisa mengekspor Excel" });
+      setStatus({ type: "error", message: error instanceof Error ? error.message : "Tidak bisa mengekspor Excel" });
     } finally {
       setExporting(false);
     }
@@ -562,6 +584,7 @@ export default function TransactionsClient({
         totalPages={totalPages}
         pageSize={PAGE_SIZE}
         onPageChange={handlePageChange}
+        lastFetchMs={lastFetchMs}
       />
     </div>
   );
@@ -936,6 +959,7 @@ const TransactionsList = memo(function TransactionsList({
   totalPages,
   pageSize,
   onPageChange,
+  lastFetchMs,
 }: {
   transactions: TransactionClientData[];
   total: number;
@@ -947,6 +971,7 @@ const TransactionsList = memo(function TransactionsList({
   totalPages: number;
   pageSize: number;
   onPageChange: (page: number) => void;
+  lastFetchMs: number | null;
 }) {
   const showingFrom = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const showingTo = Math.min(page * pageSize, total);
@@ -1115,6 +1140,7 @@ const TransactionsList = memo(function TransactionsList({
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-slate-500">
           Menampilkan {showingFrom}-{showingTo} dari {total}
+          {lastFetchMs !== null ? ` • fetch ${Math.round(lastFetchMs)}ms` : ""}
         </p>
         <div className="flex items-center gap-2">
           <Button

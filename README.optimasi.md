@@ -27,8 +27,9 @@ Deliverable: interaksi filter cepat, request berkurang, UI tidak freeze saat aks
 Deliverable: payload API lebih ramping, render loop minim perhitungan, load time turun.
 
 ## Phase 4 — UX Berat Beban
-- Export non-blocking: streaming atau job + polling; hindari Blob besar di main thread.
-- Prefetch ringan saat navigasi (Next.js prefetch) hanya untuk data kecil.
-- Pengukuran: tambahkan metrics sederhana (CLS/FID/LCP) atau log waktu fetch/render untuk memandu iterasi.
+- ✅ Pengukuran: tambah helper metrics (`measureAsync`, `reportMetric`) + logging durasi fetch transaksi/recurring/export.
+- ✅ Export lebih ramah: klik download dijalankan via `requestIdleCallback`, log ukuran/latensi ekspor.
+- ✅ Prefetch ringan saat navigasi (`/transactions` diprefetch via header CTA).
+- ✅ Export non-blocking: endpoint export disajikan via streaming response (chunked) untuk beban besar.
 
-Deliverable: UX tetap halus untuk operasi berat, ada metrik untuk memvalidasi peningkatan.
+Deliverable: UX tetap halus untuk operasi berat, ada metrik dasar untuk memvalidasi peningkatan.

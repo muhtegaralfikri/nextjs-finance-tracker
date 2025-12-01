@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
+import { PassThrough, Readable } from "node:stream";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { decimalToNumber, getMonthRange } from "@/lib/finance";
@@ -115,14 +116,18 @@ export async function GET(request: Request) {
   // Freeze header
   sheet.views = [{ state: "frozen", ySplit: tableStartRow }];
 
-  const buffer = await workbook.xlsx.writeBuffer();
+  // Stream the workbook to avoid holding large buffers in memory.
+  const passThrough = new PassThrough();
+  void workbook.xlsx.write(passThrough).catch((err) => passThrough.destroy(err));
+  const webStream = Readable.toWeb(passThrough) as unknown as ReadableStream;
 
-  return new NextResponse(Buffer.from(buffer), {
+  return new NextResponse(webStream, {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="transactions.xlsx"`,
+      "Content-Disposition": `attachment; filename=\"transactions.xlsx\"`,
       "Cache-Control": "private, max-age=300",
+      "Transfer-Encoding": "chunked",
     },
   });
 }
