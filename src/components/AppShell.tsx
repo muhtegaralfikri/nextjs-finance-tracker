@@ -122,10 +122,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center justify-center gap-1 py-3 text-xs ${
-                  active ? "text-emerald-300" : "text-slate-400 hover:text-slate-200"
+                className={`flex flex-col items-center justify-center gap-1 py-3 text-xs transition-colors ${
+                  active
+                    ? "text-emerald-300 bg-emerald-500/10 border-t border-emerald-400/40"
+                    : "text-slate-300 hover:text-emerald-200 active:bg-slate-900/80"
                 }`}
                 aria-label={item.label}
+                aria-current={active ? "page" : undefined}
               >
                 <Icon className="h-5 w-5" aria-hidden />
                 <span>{item.label}</span>
