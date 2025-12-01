@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Alert from "@/components/ui/alert";
 import Button from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,6 +52,13 @@ export type RecurringClientData = {
 
 const PAGE_SIZE = 20;
 
+type FiltersState = {
+  from: string;
+  to: string;
+  walletId: string;
+  categoryId: string;
+};
+
 type TransactionFormState = {
   walletId: string;
   categoryId: string;
@@ -75,6 +82,7 @@ export default function TransactionsClient({
   wallets,
   categories,
   initialTransactions,
+  initialTotal,
   initialFrom,
   initialTo,
   initialRecurrences,
@@ -82,19 +90,23 @@ export default function TransactionsClient({
   wallets: TransactionWallet[];
   categories: TransactionCategory[];
   initialTransactions: TransactionClientData[];
+  initialTotal: number;
   initialFrom: string;
   initialTo: string;
   initialRecurrences: RecurringClientData[];
 }) {
-  const [transactions, setTransactions] = useState<TransactionClientData[]>(initialTransactions);
+  const [transactionsData, setTransactionsData] = useState<{
+    transactions: TransactionClientData[];
+    total: number;
+  }>({ transactions: initialTransactions, total: initialTotal });
   const [recurrences, setRecurrences] = useState<RecurringClientData[]>(initialRecurrences);
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<FiltersState>({
     from: initialFrom,
     to: initialTo,
     walletId: "",
     categoryId: "",
   });
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<TransactionFormState>({
     walletId: wallets[0]?.id || "",
     categoryId: categories.find((c) => c.type === TransactionType.EXPENSE)?.id || "",
     type: TransactionType.EXPENSE as TransactionType,
@@ -102,7 +114,7 @@ export default function TransactionsClient({
     date: initialTo,
     note: "",
   });
-  const [recurringForm, setRecurringForm] = useState({
+  const [recurringForm, setRecurringForm] = useState<RecurringFormState>({
     walletId: wallets[0]?.id || "",
     type: TransactionType.EXPENSE as TransactionType,
     categoryId: categories.find((c) => c.type === TransactionType.EXPENSE)?.id || "",
@@ -116,9 +128,16 @@ export default function TransactionsClient({
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(
     null
   );
-  const [loading, setLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [page, setPage] = useState(1);
+  const cacheRef = useRef<Map<string, { transactions: TransactionClientData[]; total: number }>>(
+    new Map()
+  );
+  const recurrenceCacheRef = useRef<{ data: RecurringClientData[]; ts: number } | null>(null);
+  const RECURRENCE_CACHE_TTL = 60_000;
 
   const availableCategories = useMemo(
     () => categories.filter((c) => c.type === form.type),
@@ -137,33 +156,89 @@ export default function TransactionsClient({
   }, [recurringCategories, recurringForm.categoryId]);
 
   const totalPages = useMemo(
-    () => Math.max(1, Math.ceil(transactions.length / PAGE_SIZE)),
-    [transactions.length]
+    () => Math.max(1, Math.ceil((transactionsData.total || 0) / PAGE_SIZE)),
+    [transactionsData.total]
   );
-
-  const paginatedTransactions = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return transactions.slice(start, start + PAGE_SIZE);
-  }, [page, transactions]);
 
   useEffect(() => {
     setPage((prev) => Math.min(prev, totalPages));
   }, [totalPages]);
 
-  const updateForm = useCallback((field: keyof typeof form, value: string | TransactionType) => {
+  const updateForm = useCallback((field: keyof TransactionFormState, value: string | TransactionType) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   }, []);
 
   const updateRecurringForm = useCallback(
-    (field: keyof typeof recurringForm, value: string | TransactionType | RecurringCadence) => {
+    (field: keyof RecurringFormState, value: string | TransactionType | RecurringCadence) => {
       setRecurringForm((prev) => ({ ...prev, [field]: value }));
     },
     []
   );
 
-  const updateFilters = useCallback((field: keyof typeof filters, value: string) => {
+  const filterDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const [debouncedFilters, setDebouncedFiltersState] = useState<FiltersState>(filters);
+
+  const fetchTransactions = useCallback(
+    async (filtersToUse: FiltersState, pageToUse: number) => {
+      const params = new URLSearchParams();
+      if (filtersToUse.from) params.set("from", filtersToUse.from);
+      if (filtersToUse.to) params.set("to", filtersToUse.to);
+      if (filtersToUse.walletId) params.set("walletId", filtersToUse.walletId);
+      if (filtersToUse.categoryId) params.set("categoryId", filtersToUse.categoryId);
+      params.set("page", String(pageToUse));
+      params.set("limit", String(PAGE_SIZE));
+
+      const key = params.toString();
+      const cached = cacheRef.current.get(key);
+      if (cached) {
+        setTransactionsData(cached);
+      }
+
+      setIsFetching(true);
+      setStatus(null);
+
+      try {
+        const res = await fetch(`/api/transactions?${params.toString()}`);
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          setStatus({ type: "error", message: data?.error || "Gagal memuat transaksi" });
+          return;
+        }
+        const data = await res.json();
+        const normalized: TransactionClientData[] = (data.transactions || []).map(
+          normalizeTransaction
+        );
+        const nextState = { transactions: normalized, total: data.total || normalized.length };
+        cacheRef.current.set(key, nextState);
+        setTransactionsData(nextState);
+      } catch (error) {
+        console.error(error);
+        setStatus({ type: "error", message: "Tidak bisa terhubung ke server" });
+      } finally {
+        setIsFetching(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+    filterDebounceRef.current = setTimeout(() => {
+      setDebouncedFiltersState(filters);
+    }, 350);
+    return () => {
+      if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+    };
+  }, [filters]);
+
+  const updateFilters = useCallback((field: keyof FiltersState, value: string) => {
     setFilters((prev) => ({ ...prev, [field]: value }));
+    setPage(1);
   }, []);
+
+  useEffect(() => {
+    fetchTransactions(debouncedFilters, page);
+  }, [debouncedFilters, page, fetchTransactions]);
 
   const handlePageChange = useCallback(
     (next: number) => {
@@ -176,40 +251,14 @@ export default function TransactionsClient({
     [totalPages]
   );
 
-  async function loadTransactions(nextFilters?: typeof filters) {
-    setLoading(true);
-    setStatus(null);
-    const activeFilters = nextFilters || filters;
-    const params = new URLSearchParams();
-    if (activeFilters.from) params.set("from", activeFilters.from);
-    if (activeFilters.to) params.set("to", activeFilters.to);
-    if (activeFilters.walletId) params.set("walletId", activeFilters.walletId);
-    if (activeFilters.categoryId) params.set("categoryId", activeFilters.categoryId);
-
-    try {
-      const res = await fetch(`/api/transactions?${params.toString()}`);
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setStatus({ type: "error", message: data?.error || "Gagal memuat transaksi" });
-        return;
-      }
-
-      const data = await res.json();
-      const normalized: TransactionClientData[] = (data.transactions || []).map(
-        normalizeTransaction
-      );
-      setTransactions(normalized);
-      setPage(1);
-    } catch (error) {
-      console.error(error);
-      setStatus({ type: "error", message: "Tidak bisa terhubung ke server" });
-    } finally {
-      setLoading(false);
+  async function loadRecurrences(options?: { force?: boolean }) {
+    const now = Date.now();
+    const cached = recurrenceCacheRef.current;
+    if (!options?.force && cached && now - cached.ts < RECURRENCE_CACHE_TTL) {
+      setRecurrences(cached.data);
+      return;
     }
-  }
 
-  async function loadRecurrences() {
     setRecurringLoading(true);
     try {
       const res = await fetch("/api/recurring");
@@ -219,8 +268,11 @@ export default function TransactionsClient({
         return;
       }
       const data = await res.json();
-      const normalized: RecurringClientData[] = (data.recurrences || []).map(normalizeRecurring);
-      setRecurrences(normalized);
+      const normalizedRecurrences: RecurringClientData[] = (data.recurrences || []).map(
+        normalizeRecurring
+      );
+      recurrenceCacheRef.current = { data: normalizedRecurrences, ts: Date.now() };
+      setRecurrences(normalizedRecurrences);
     } catch (error) {
       console.error(error);
       setStatus({ type: "error", message: "Tidak bisa memuat recurring" });
@@ -240,7 +292,7 @@ export default function TransactionsClient({
       return;
     }
 
-    setLoading(true);
+    setIsSaving(true);
     setStatus(null);
 
     const payload = {
@@ -268,24 +320,16 @@ export default function TransactionsClient({
         return;
       }
 
-      const saved = await res.json();
-      const normalized = normalizeTransaction(saved);
-
-      if (editingId) {
-        setTransactions((prev) => prev.map((tx) => (tx.id === editingId ? normalized : tx)));
-        setStatus({ type: "success", message: "Transaksi diperbarui" });
-      } else {
-        setTransactions((prev) => [normalized, ...prev]);
-        setStatus({ type: "success", message: "Transaksi tersimpan" });
-        setPage(1);
-      }
+      setStatus({ type: "success", message: editingId ? "Transaksi diperbarui" : "Transaksi tersimpan" });
+      await fetchTransactions(debouncedFilters, 1);
+      setPage(1);
 
       resetForm();
     } catch (error) {
       console.error(error);
       setStatus({ type: "error", message: "Tidak bisa terhubung ke server" });
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   }
 
@@ -315,7 +359,7 @@ export default function TransactionsClient({
 
   async function handleDelete(id: string) {
     if (!confirm("Hapus transaksi ini?")) return;
-    setLoading(true);
+    setDeletingId(id);
     setStatus(null);
 
     try {
@@ -327,13 +371,13 @@ export default function TransactionsClient({
         return;
       }
 
-      setTransactions((prev) => prev.filter((tx) => tx.id !== id));
+      await fetchTransactions(debouncedFilters, page);
       setStatus({ type: "success", message: "Transaksi dihapus" });
     } catch (error) {
       console.error(error);
       setStatus({ type: "error", message: "Tidak bisa terhubung ke server" });
     } finally {
-      setLoading(false);
+      setDeletingId(null);
     }
   }
 
@@ -371,7 +415,11 @@ export default function TransactionsClient({
       }
 
       const created = normalizeRecurring(await res.json());
-      setRecurrences((prev) => [created, ...prev]);
+      setRecurrences((prev) => {
+        const next = [created, ...prev];
+        recurrenceCacheRef.current = { data: next, ts: Date.now() };
+        return next;
+      });
       setRecurringForm((prev) => ({ ...prev, amount: "", note: "" }));
       setStatus({ type: "success", message: "Recurring disimpan" });
     } catch (error) {
@@ -393,7 +441,11 @@ export default function TransactionsClient({
         setStatus({ type: "error", message: data?.error || "Gagal menghapus recurring" });
         return;
       }
-      setRecurrences((prev) => prev.filter((r) => r.id !== id));
+      setRecurrences((prev) => {
+        const next = prev.filter((r) => r.id !== id);
+        recurrenceCacheRef.current = { data: next, ts: Date.now() };
+        return next;
+      });
       setStatus({ type: "success", message: "Recurring dihapus" });
     } catch (error) {
       console.error(error);
@@ -442,7 +494,7 @@ export default function TransactionsClient({
         availableCategories={availableCategories}
         form={form}
         editingId={editingId}
-        loading={loading}
+        loading={isSaving}
         onTypeChange={(type) => {
           const fallbackCategory = categories.find((c) => c.type === type)?.id || "";
           updateForm("type", type);
@@ -461,15 +513,19 @@ export default function TransactionsClient({
         filters={filters}
         wallets={wallets}
         categories={categories}
-        loading={loading}
+        loading={isFetching}
         exporting={exporting}
         onFilterChange={updateFilters}
-        onApply={() => loadTransactions()}
+        onApply={() => {
+          if (filterDebounceRef.current) clearTimeout(filterDebounceRef.current);
+          setDebouncedFiltersState(filters);
+        }}
         onExport={handleExport}
         onReset={() => {
           const reset = { from: initialFrom, to: initialTo, walletId: "", categoryId: "" };
           setFilters(reset);
-          loadTransactions(reset);
+          setDebouncedFiltersState(reset);
+          setPage(1);
         }}
       />
 
@@ -492,14 +548,14 @@ export default function TransactionsClient({
         onNoteChange={(value) => updateRecurringForm("note", value)}
         onCreateRecurring={handleCreateRecurring}
         onDeleteRecurring={handleDeleteRecurring}
-        onReloadRecurring={loadRecurrences}
+        onReloadRecurring={() => loadRecurrences({ force: true })}
       />
 
       <TransactionsList
-        transactions={paginatedTransactions}
-        total={transactions.length}
-        loading={loading}
-        editingId={editingId}
+        transactions={transactionsData.transactions}
+        total={transactionsData.total}
+        loading={isFetching}
+        deletingId={deletingId}
         onEdit={startEdit}
         onDelete={handleDelete}
         page={page}
@@ -648,12 +704,12 @@ const FilterSection = memo(function FilterSection({
   onExport,
   onReset,
 }: {
-  filters: { from: string; to: string; walletId: string; categoryId: string };
+  filters: FiltersState;
   wallets: TransactionWallet[];
   categories: TransactionCategory[];
   loading: boolean;
   exporting: boolean;
-  onFilterChange: (field: keyof typeof filters, value: string) => void;
+  onFilterChange: (field: keyof FiltersState, value: string) => void;
   onApply: () => void;
   onExport: () => void;
   onReset: () => void;
@@ -741,13 +797,13 @@ const RecurringSection = memo(function RecurringSection({
   onWalletChange: (value: string) => void;
   onCategoryChange: (value: string) => void;
   onAmountChange: (value: string) => void;
-  onCadenceChange: (value: RecurringCadence) => void;
-  onNextRunChange: (value: string) => void;
-  onNoteChange: (value: string) => void;
-  onCreateRecurring: () => void;
-  onDeleteRecurring: (id: string) => void;
-  onReloadRecurring: () => void;
-}) {
+    onCadenceChange: (value: RecurringCadence) => void;
+    onNextRunChange: (value: string) => void;
+    onNoteChange: (value: string) => void;
+    onCreateRecurring: () => void;
+    onDeleteRecurring: (id: string) => void;
+    onReloadRecurring: () => void;
+  }) {
   return (
     <Card>
       <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -873,7 +929,7 @@ const TransactionsList = memo(function TransactionsList({
   transactions,
   total,
   loading,
-  editingId,
+  deletingId,
   onEdit,
   onDelete,
   page,
@@ -884,7 +940,7 @@ const TransactionsList = memo(function TransactionsList({
   transactions: TransactionClientData[];
   total: number;
   loading: boolean;
-  editingId: string | null;
+  deletingId: string | null;
   onEdit: (tx: TransactionClientData) => void;
   onDelete: (id: string) => void;
   page: number;
@@ -972,7 +1028,7 @@ const TransactionsList = memo(function TransactionsList({
                       variant="danger"
                       onClick={() => onDelete(tx.id)}
                       className="px-3 py-1"
-                      loading={loading && editingId === tx.id}
+                      loading={deletingId === tx.id}
                     >
                       Hapus
                     </Button>
@@ -1038,7 +1094,7 @@ const TransactionsList = memo(function TransactionsList({
                     variant="danger"
                     onClick={() => onDelete(tx.id)}
                     className="px-3 py-1 text-xs"
-                    loading={loading && editingId === tx.id}
+                    loading={deletingId === tx.id}
                   >
                     Hapus
                   </Button>

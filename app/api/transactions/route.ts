@@ -30,34 +30,47 @@ export async function GET(request: Request) {
   const categoryId = searchParams.get("categoryId") || undefined;
   const fromParam = searchParams.get("from") || undefined;
   const toParam = searchParams.get("to") || undefined;
+  const pageParam = searchParams.get("page");
+  const limitParam = searchParams.get("limit");
+
+  const page = Math.max(1, Number(pageParam) || 1);
+  const limit = Math.min(100, Math.max(1, Number(limitParam) || 20));
+  const skip = (page - 1) * limit;
 
   try {
     await applyDueRecurrences(userId);
     const { from, to } = fromParam || toParam ? getRangeWithCustomDates(fromParam, toParam) : getMonthRange();
 
-    const transactions = await prisma.transaction.findMany({
-      where: {
-        userId,
-        walletId,
-        categoryId,
-        date: {
-          gte: from,
-          lte: to,
+    const where = {
+      userId,
+      walletId,
+      categoryId,
+      date: {
+        gte: from,
+        lte: to,
+      },
+    } as const;
+
+    const [transactions, total] = await Promise.all([
+      prisma.transaction.findMany({
+        where,
+        include: {
+          wallet: true,
+          category: true,
         },
-      },
-      include: {
-        wallet: true,
-        category: true,
-      },
-      orderBy: { date: "desc" },
-    });
+        orderBy: { date: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.transaction.count({ where }),
+    ]);
 
     const normalized = transactions.map((tx) => ({
       ...tx,
       amount: decimalToNumber(tx.amount),
     }));
 
-    return NextResponse.json({ transactions: normalized });
+    return NextResponse.json({ transactions: normalized, total, page, limit });
   } catch (error) {
     console.error(error);
     return NextResponse.json(

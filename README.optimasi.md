@@ -11,10 +11,10 @@ Rencana bertahap agar UI tetap ringan. Tiap fase bisa dieksekusi mandiri.
 Deliverable: transaksi tetap berfungsi, bundle client turun, rerender jauh berkurang untuk daftar besar.
 
 ## Phase 2 — Responsif & Hemat Request
-- State loading granular + `useTransition` untuk aksi berat (fetch, delete, export) agar input tidak lag.
-- Debounce filter sebelum hit `/api/transactions`; kurangi request ganda.
-- Caching client (SWR/React Query) untuk transaksi+recurring; refetch otomatis saat mutate.
-- Paginasi/virtualisasi yang lebih baik: server-side pagination (limit/offset atau cursor).
+- ✅ State loading granular (fetch/save/delete/export per-aksi; `useTransition` opsional) agar input tidak lag.
+- ✅ Debounce filter sebelum hit `/api/transactions` (auto-fetch 350ms setelah perubahan).
+- ✅ Caching client sederhana + dedupe fetch transaksi via cache map (key by filter+page) dan recurring (TTL 60s).
+- ✅ Paginasi server (`page`/`limit` di API + query take/skip) menggantikan slicing client.
 
 Deliverable: interaksi filter cepat, request berkurang, UI tidak freeze saat aksi berjalan.
 

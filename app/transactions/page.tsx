@@ -27,6 +27,8 @@ export default async function TransactionsPage() {
   }
   const userId = session.user.id;
 
+  const PAGE_SIZE = 20;
+
   await ensureDefaultCategories(userId);
   await applyDueRecurrences(userId);
 
@@ -37,17 +39,24 @@ export default async function TransactionsPage() {
   });
 
   const { from, to } = getMonthRange();
-  const transactions = await prisma.transaction.findMany({
-    where: {
-      userId,
-      date: { gte: from, lte: to },
-    },
-    include: {
-      wallet: true,
-      category: true,
-    },
-    orderBy: { date: "desc" },
-  });
+  const where = {
+    userId,
+    date: { gte: from, lte: to },
+  } as const;
+
+  const [transactions, transactionsTotal] = await Promise.all([
+    prisma.transaction.findMany({
+      where,
+      include: {
+        wallet: true,
+        category: true,
+      },
+      orderBy: { date: "desc" },
+      take: PAGE_SIZE,
+      skip: 0,
+    }),
+    prisma.transaction.count({ where }),
+  ]);
 
   const initialTransactions: TransactionClientData[] = transactions.map((tx) => ({
     id: tx.id,
@@ -108,6 +117,7 @@ export default async function TransactionsPage() {
           wallets={wallets}
           categories={categories}
           initialTransactions={initialTransactions}
+          initialTotal={transactionsTotal}
           initialFrom={formatInputDate(from)}
           initialTo={formatInputDate(to)}
           initialRecurrences={recurrences}
