@@ -10,7 +10,7 @@ export default function Home() {
         <div className="flex justify-end">
           <ThemeToggle />
         </div>
-        <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <header className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-300 uppercase tracking-[0.2em]">
               Personal Finance Tracker
@@ -23,16 +23,16 @@ export default function Home() {
               kategori, dan lihat performa bulanan tanpa ribet.
             </p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <a
               href="/register"
-              className="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-5 py-3 shadow-lg shadow-emerald-500/30"
+              className="inline-flex items-center justify-center rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-5 py-3 shadow-lg shadow-emerald-500/30 w-full sm:w-auto transition"
             >
               Mulai Gratis
             </a>
             <a
               href="/login"
-              className="rounded-xl border border-slate-700 hover:border-emerald-400 px-5 py-3 text-slate-100"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-700 px-5 py-3 text-slate-100 transition w-full sm:w-auto hover:bg-(--skeleton-bg) hover:border-(--skeleton-bg) hover:text-white"
             >
               Login
             </a>
@@ -69,7 +69,7 @@ export default function Home() {
             </a>
             <a
               href="/transactions"
-              className="rounded-lg border border-slate-700 px-4 py-2 text-slate-100 hover:border-emerald-400 hover:bg-slate-800/60 hover:text-emerald-200 transition-colors"
+              className="rounded-lg border border-slate-700 px-4 py-2 text-slate-100 transition-colors hover:bg-(--skeleton-bg) hover:border-(--skeleton-bg) hover:text-white"
             >
               Lihat Transaksi
             </a>
