@@ -14,11 +14,12 @@ export async function PATCH(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = session.user.id;
 
   const { id } = await params;
 
   const wallet = await prisma.wallet.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id, userId },
   });
 
   if (!wallet) {
@@ -59,7 +60,7 @@ export async function PATCH(
       },
     });
 
-    const walletsWithBalance = await getWalletsWithBalance(session.user.id);
+    const walletsWithBalance = await getWalletsWithBalance(userId);
     const target = walletsWithBalance.find((w) => w.id === updated.id);
 
     return NextResponse.json(
@@ -89,28 +90,24 @@ export async function DELETE(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = session.user.id;
 
   const { id } = await params;
 
   const wallet = await prisma.wallet.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id, userId },
   });
 
   if (!wallet) {
     return NextResponse.json({ error: "Wallet tidak ditemukan" }, { status: 404 });
   }
 
-  const hasTransactions = await prisma.transaction.count({
-    where: { walletId: wallet.id, userId: session.user.id },
+  await prisma.$transaction(async (tx) => {
+    await tx.transaction.deleteMany({
+      where: { walletId: wallet.id, userId },
+    });
+
+    await tx.wallet.delete({ where: { id: wallet.id } });
   });
-
-  if (hasTransactions > 0) {
-    return NextResponse.json(
-      { error: "Wallet memiliki transaksi, tidak bisa dihapus" },
-      { status: 400 }
-    );
-  }
-
-  await prisma.wallet.delete({ where: { id: wallet.id } });
   return NextResponse.json({ success: true });
 }
