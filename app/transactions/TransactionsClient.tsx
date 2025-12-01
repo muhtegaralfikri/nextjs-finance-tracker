@@ -742,7 +742,6 @@ const FilterSection = memo(function FilterSection({
       <CardHeader className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <CardTitle>Filter</CardTitle>
-          <CardDescription>Default: bulan ini</CardDescription>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-2 w-full md:w-auto">
           <Input

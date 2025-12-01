@@ -5,9 +5,11 @@ import { cn } from "@/lib/cn";
 import Spinner from "./spinner";
 
 type ButtonVariant = "primary" | "outline" | "ghost" | "danger";
+type ButtonSize = "md" | "sm";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
+  size?: ButtonSize;
   loading?: boolean;
 };
 
@@ -21,15 +23,21 @@ const variantClass: Record<ButtonVariant, string> = {
     "border border-rose-500/60 text-rose-200 bg-slate-950/40 hover:bg-[var(--btn-hover-danger)] hover:border-rose-400 hover:text-white hover:shadow-[0_0_0_1px_rgba(248,113,113,0.35)]",
 };
 
+const sizeClass: Record<ButtonSize, string> = {
+  md: "px-4 py-2 text-sm",
+  sm: "px-3 py-1.5 text-xs",
+};
+
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { children, className, variant = "primary", loading, disabled, type, ...props },
+  { children, className, variant = "primary", size = "md", loading, disabled, type, ...props },
   ref
 ) {
   return (
     <button
       ref={ref}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition duration-150 disabled:opacity-60 hover:-translate-y-px",
+        "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition duration-150 disabled:opacity-60 hover:-translate-y-px",
+        sizeClass[size],
         variantClass[variant],
         className
       )}

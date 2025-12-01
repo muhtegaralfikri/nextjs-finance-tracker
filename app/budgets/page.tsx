@@ -8,7 +8,9 @@ import { getGoalsWithProgress } from "@/lib/goals";
 import { ensureDefaultCategories } from "@/lib/categories";
 import BudgetsClient, { BudgetCategory, BudgetItem } from "./BudgetsClient";
 import GoalsClient, { GoalItem } from "./GoalsClient";
+import DailyAllowanceClient from "./DailyAllowanceClient";
 import AppShell from "@/components/AppShell";
+import { getDailyExpensesByDate } from "@/lib/allowance";
 
 export default async function BudgetsPage() {
   const session = await auth();
@@ -51,6 +53,8 @@ export default async function BudgetsPage() {
     note: goal.note || null,
   }));
 
+  const dailyExpenses = await getDailyExpensesByDate(userId, { month: label });
+
   return (
     <AppShell>
       <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
@@ -60,6 +64,12 @@ export default async function BudgetsPage() {
             Tetapkan batas pengeluaran per kategori dan target tabungan yang ingin dicapai dengan UX lebih responsif.
           </p>
         </div>
+
+        <DailyAllowanceClient
+          initialMonth={label}
+          categories={categories}
+          initialDays={dailyExpenses.days}
+        />
 
         <BudgetsClient initialBudgets={budgets} categories={categories} initialMonth={label} />
 
