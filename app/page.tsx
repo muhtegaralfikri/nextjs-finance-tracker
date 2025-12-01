@@ -26,13 +26,13 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <a
               href="/register"
-              className="inline-flex items-center justify-center rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-5 py-3 shadow-lg shadow-emerald-500/30 w-full sm:w-auto transition"
+              className="inline-flex items-center justify-center rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-5 py-3 shadow-lg shadow-emerald-500/30 w-full sm:w-auto transition active:translate-y-px active:opacity-90"
             >
               Mulai Gratis
             </a>
             <a
               href="/login"
-              className="inline-flex items-center justify-center rounded-xl border border-slate-700 px-5 py-3 text-slate-100 transition w-full sm:w-auto hover:bg-(--skeleton-bg) hover:border-(--skeleton-bg) hover:text-white"
+              className="inline-flex items-center justify-center rounded-xl border border-slate-700 px-5 py-3 text-slate-100 transition w-full sm:w-auto hover:bg-(--skeleton-bg) hover:border-(--skeleton-bg) hover:text-white active:translate-y-px active:opacity-90"
             >
               Login
             </a>
@@ -63,13 +63,13 @@ export default function Home() {
           <div className="flex gap-3">
             <a
               href="/dashboard"
-              className="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-4 py-2"
+              className="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-4 py-2 transition active:translate-y-px active:opacity-90"
             >
               Buka Dashboard
             </a>
             <a
               href="/transactions"
-              className="rounded-lg border border-slate-700 px-4 py-2 text-slate-100 transition-colors hover:bg-(--skeleton-bg) hover:border-(--skeleton-bg) hover:text-white"
+              className="rounded-lg border border-slate-700 px-4 py-2 text-slate-100 transition-colors hover:bg-(--skeleton-bg) hover:border-(--skeleton-bg) hover:text-white active:translate-y-px active:opacity-90"
             >
               Lihat Transaksi
             </a>
