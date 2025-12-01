@@ -10,6 +10,7 @@
   --btn-hover-outline: rgba(16, 185, 129, 0.22);
   --btn-hover-ghost: rgba(255, 255, 255, 0.12);
   --btn-hover-danger: rgba(248, 113, 113, 0.2);
+  --skeleton-bg: #1f2937;
   color-scheme: dark;
 }
 
@@ -23,6 +24,7 @@
   --btn-hover-outline: rgba(16, 185, 129, 0.18);
   --btn-hover-ghost: rgba(15, 23, 42, 0.08);
   --btn-hover-danger: rgba(239, 68, 68, 0.18);
+  --skeleton-bg: #e2e8f0;
   color-scheme: light;
 }
 
