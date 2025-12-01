@@ -5,6 +5,9 @@ import { FormEvent, Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ThemeToggle from "@/components/ThemeToggle";
+import Input from "@/components/ui/input";
+import Button from "@/components/ui/button";
+import Alert from "@/components/ui/alert";
 
 function LoginContent() {
   const router = useRouter();
@@ -39,71 +42,73 @@ function LoginContent() {
 
   return (
     <div
-      className="relative min-h-screen flex items-center justify-center"
+      className="relative min-h-screen flex items-center justify-center px-4 py-10"
       style={{ background: "var(--bg-app)", color: "var(--text-primary)" }}
     >
       <div className="absolute right-4 top-4">
         <ThemeToggle />
       </div>
-      <div className="w-full max-w-md bg-slate-900/60 border border-slate-800 rounded-2xl p-6 shadow-xl">
-        <h1 className="text-2xl font-semibold text-white mb-2">
-          Finance Tracker Login
-        </h1>
-
-        {registered && (
-          <p className="text-sm text-emerald-400 mb-3">
-            Akun berhasil dibuat, silakan login.
+      <div className="w-full max-w-lg">
+        <div className="mb-6 text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+            Personal Finance Tracker
           </p>
-        )}
-
-        {error && (
-          <p className="text-sm text-red-400 mb-3">
-            {error}
+          <h1 className="mt-2 text-3xl font-semibold text-white">Masuk</h1>
+          <p className="text-sm text-slate-400 mt-2">
+            Kelola dompet, transaksi, dan ringkasan bulanan dari satu tempat.
           </p>
-        )}
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm text-slate-300 mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 shadow-xl shadow-emerald-900/20 p-6 space-y-4">
+          {registered && (
+            <Alert variant="success">Akun berhasil dibuat, silakan login.</Alert>
+          )}
+          {error && <Alert variant="error">{error}</Alert>}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-sm text-slate-300">Email</label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="nama@contoh.com"
+                required
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm text-slate-300">Password</label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+
+            <Button type="submit" loading={loading} className="w-full">
+              {loading ? "Masuk..." : "Login"}
+            </Button>
+          </form>
+
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span className="h-px flex-1 bg-slate-800" />
+            <span>atau</span>
+            <span className="h-px flex-1 bg-slate-800" />
           </div>
 
-          <div>
-            <label className="block text-sm text-slate-300 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-400"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+          <div className="space-y-2 text-center text-sm">
+            <p className="text-slate-300">Belum punya akun?</p>
+            <a
+              href="/register"
+              className="inline-flex justify-center rounded-lg border border-slate-700 px-4 py-2 text-slate-100 hover:bg-(--btn-hover-outline) hover:border-emerald-400 hover:text-white transition active:translate-y-px active:opacity-90"
+            >
+              Daftar sekarang
+            </a>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-semibold py-2 text-sm disabled:opacity-60"
-          >
-            {loading ? "Masuk..." : "Login"}
-          </button>
-        </form>
-
-        <p className="mt-4 text-xs text-slate-400">
-          Belum punya akun?{" "}
-          <a href="/register" className="text-emerald-400 hover:underline">
-            Daftar di sini
-          </a>
-        </p>
+        </div>
       </div>
     </div>
   );
