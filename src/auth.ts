@@ -7,11 +7,6 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
 const resolvedSecret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
-if (!resolvedSecret) {
-  console.error("[auth] Missing AUTH_SECRET/NEXTAUTH_SECRET");
-} else {
-  console.log("[auth] using secret length", resolvedSecret.length);
-}
 
 const authConfig: NextAuthConfig = {
   secret: resolvedSecret,
