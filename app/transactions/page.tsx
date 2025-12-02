@@ -39,6 +39,7 @@ export default async function TransactionsPage() {
   });
 
   const { from, to } = getMonthRange();
+  const today = new Date();
   const where = {
     userId,
     date: { gte: from, lte: to },
@@ -120,7 +121,7 @@ export default async function TransactionsPage() {
           initialTransactions={initialTransactions}
           initialTotal={transactionsTotal}
           initialFrom={formatInputDate(from)}
-          initialTo={formatInputDate(to)}
+          initialTo={formatInputDate(today)}
           initialRecurrences={recurrences}
         />
       </div>
