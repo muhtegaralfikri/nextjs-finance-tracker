@@ -18,9 +18,11 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  const token =
-    req.cookies.get("__Secure-authjs.session-token")?.value ||
-    req.cookies.get("authjs.session-token")?.value;
+  const tokenCookie =
+    req.cookies.get("__Secure-authjs.session-token") ||
+    req.cookies.get("authjs.session-token");
+  const token = tokenCookie?.value;
+  const tokenName = tokenCookie?.name || "authjs.session-token";
 
   if (!token) {
     console.log("[proxy] no token, redirecting");
@@ -37,7 +39,7 @@ export async function proxy(req: NextRequest) {
     const session = await decode({
       token,
       secret,
-      salt: "authjs.session-token",
+      salt: tokenName,
     });
 
     if (!session?.sub) {
@@ -56,6 +58,7 @@ export async function proxy(req: NextRequest) {
       processEnvAuthSecretLen: (process.env.AUTH_SECRET || "").length,
       processEnvNextAuthSecretLen: (process.env.NEXTAUTH_SECRET || "").length,
       nextAuthUrl: process.env.NEXTAUTH_URL,
+      tokenName,
     });
     return redirectToLogin(req);
   }
