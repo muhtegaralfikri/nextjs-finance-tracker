@@ -23,12 +23,13 @@ export async function proxy(req: NextRequest) {
     req.cookies.get("authjs.session-token")?.value;
 
   if (!token) {
+    console.log("[proxy] no token, redirecting");
     return redirectToLogin(req);
   }
 
   const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
   if (!secret) {
-    console.error("Missing AUTH_SECRET for proxy check");
+    console.error("[proxy] Missing AUTH_SECRET/NEXTAUTH_SECRET for proxy check");
     return redirectToLogin(req);
   }
 
@@ -40,12 +41,18 @@ export async function proxy(req: NextRequest) {
     });
 
     if (!session?.sub) {
+      console.error("[proxy] decode ok but no sub");
       return redirectToLogin(req);
     }
 
     return NextResponse.next();
   } catch (error) {
-    console.error("Failed to decode session in proxy", error);
+    console.error("[proxy] Failed to decode session", {
+      error,
+      secretLength: secret.length,
+      hasToken: Boolean(token),
+      tokenPrefix: token.slice(0, 10),
+    });
     return redirectToLogin(req);
   }
 }
