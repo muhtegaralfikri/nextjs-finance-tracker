@@ -11,7 +11,7 @@ const matcherPaths = [
   "/profile",
 ];
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const shouldProtect = matcherPaths.some((path) => pathname.startsWith(path));
   if (!shouldProtect) {
@@ -28,7 +28,7 @@ export async function middleware(req: NextRequest) {
 
   const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET;
   if (!secret) {
-    console.error("Missing AUTH_SECRET for middleware check");
+    console.error("Missing AUTH_SECRET for proxy check");
     return redirectToLogin(req);
   }
 
@@ -45,7 +45,7 @@ export async function middleware(req: NextRequest) {
 
     return NextResponse.next();
   } catch (error) {
-    console.error("Failed to decode session in middleware", error);
+    console.error("Failed to decode session in proxy", error);
     return redirectToLogin(req);
   }
 }
