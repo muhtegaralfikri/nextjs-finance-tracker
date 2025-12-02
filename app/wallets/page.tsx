@@ -26,7 +26,7 @@ export default async function WalletsPage() {
         <div>
           <h1 className="text-3xl font-semibold">Wallet Management</h1>
           <p className="text-slate-400 text-sm mt-1">
-            Buat, edit, dan hapus wallet dengan feedback loading/error. Saldo dihitung dari saldo awal + transaksi.
+            Kelola dompet cash, bank, dan e-wallet dengan saldo yang selalu terbarui.
           </p>
         </div>
 

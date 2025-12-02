@@ -10,7 +10,7 @@ export default function WalletsLoading() {
         <div className="space-y-1">
           <h1 className="text-3xl font-semibold">Wallet Management</h1>
           <p className="text-slate-400 text-sm">
-            Buat, edit, dan hapus wallet dengan feedback loading/error. Saldo dihitung dari saldo awal + transaksi.
+            Kelola dompet cash, bank, dan e-wallet dengan saldo yang selalu terbarui.
           </p>
         </div>
 
@@ -35,7 +35,7 @@ export default function WalletsLoading() {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <h2 className="text-lg font-semibold">Daftar Wallet</h2>
-              <p className="text-sm text-slate-400">Saldo realtime = saldo awal + transaksi.</p>
+              <p className="text-sm text-slate-400">Saldo selalu terbarui dari transaksi terakhir.</p>
             </div>
             <Skeleton className="h-4 w-16" />
           </div>

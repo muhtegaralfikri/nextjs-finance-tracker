@@ -253,7 +253,7 @@ export default function WalletsClient({
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-3">
           <div>
             <CardTitle>Daftar Wallet</CardTitle>
-            <CardDescription>Saldo realtime = saldo awal + transaksi.</CardDescription>
+            <CardDescription>Saldo selalu terbarui dari transaksi terakhir.</CardDescription>
           </div>
           <span className="text-xs text-slate-500">{wallets.length} wallet</span>
         </div>

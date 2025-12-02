@@ -110,7 +110,7 @@ export default async function TransactionsPage() {
         <div>
           <h1 className="text-3xl font-semibold">Transaksi</h1>
           <p className="text-slate-400 text-sm mt-1">
-            Catat pemasukan/pengeluaran, filter per tanggal, wallet, dan kategori dengan status loading/error yang jelas.
+            Catat pemasukan/pengeluaran, filter per tanggal, wallet, dan kategori.
           </p>
         </div>
 

@@ -223,10 +223,6 @@ export default function DailyAllowanceClient({
             />
           </Field>
         </div>
-        <p className="text-xs text-slate-400">
-          Formula: (dana bulan ini - cadangan goal) ÷ sisa hari. Contoh 600k, tabung 400k untuk parfum,
-          sisa 200k dibagi 30 hari → limit belanja ~6.6k/hari. Jika satu hari terpakai 40k, limit hari berikutnya turun otomatis.
-        </p>
       </CardHeader>
 
       <CardContent className="space-y-4">

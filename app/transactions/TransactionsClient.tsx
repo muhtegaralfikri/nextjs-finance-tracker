@@ -967,7 +967,7 @@ const TransferSection = memo(function TransferSection({
       <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <CardTitle>Transfer Antar Wallet</CardTitle>
-          <CardDescription>Pindahkan saldo antar wallet, otomatis bikin dua transaksi + biaya admin.</CardDescription>
+          <CardDescription>Pindahkan saldo antar wallet dan catat biaya admin jika ada.</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
