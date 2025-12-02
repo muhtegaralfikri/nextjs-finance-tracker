@@ -214,14 +214,16 @@ export default function DailyAllowanceClient({
               placeholder="Contoh: 20000"
             />
           </Field>
-          <Field label="Cadangan goal bulan ini">
-            <Input
-              type="number"
-              value={goalReserve}
-              onChange={(e) => setGoalReserve(e.target.value)}
-              placeholder="Contoh: 400000 untuk parfum"
-            />
-          </Field>
+          <div className="md:col-span-1 mb-2">
+            <Field label="Cadangan goal bulan ini">
+              <Input
+                type="number"
+                value={goalReserve}
+                onChange={(e) => setGoalReserve(e.target.value)}
+                placeholder="Contoh: 400000 untuk parfum"
+              />
+            </Field>
+          </div>
         </div>
       </CardHeader>
 
