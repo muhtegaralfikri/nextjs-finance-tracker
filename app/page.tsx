@@ -74,6 +74,10 @@ export default function Home() {
             </a>
           </div>
         </section>
+
+        <footer className="mt-10 text-center text-xs text-slate-500">
+          © {new Date().getFullYear()} Finance Tracker
+        </footer>
       </div>
     </main>
   );

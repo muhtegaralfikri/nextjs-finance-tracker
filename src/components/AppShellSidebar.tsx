@@ -62,9 +62,11 @@ export default function AppShellSidebar({ navItems }: { navItems: NavItem[] }) {
         })}
       </nav>
 
-      <div className="mt-auto px-4 py-4 text-xs text-slate-500 border-t border-slate-900/80">
-        <p className="font-semibold text-slate-300">Status sinkronisasi</p>
-        <p>Terakhir sinkron: {lastSync}</p>
+      <div className="mt-auto px-4 py-4 text-xs text-slate-500 border-t border-slate-900/80 space-y-1">
+        <div>
+          <p className="font-semibold text-slate-300">Status sinkronisasi</p>
+          <p>Terakhir sinkron: {lastSync}</p>
+        </div>
       </div>
     </aside>
   );
