@@ -5,11 +5,19 @@ import { applyDueRecurrences } from "@/lib/recurring";
 export const runtime = "nodejs";
 
 async function handler(request: Request) {
+  const url = new URL(request.url);
   const authHeader = request.headers.get("authorization") || "";
   const expected = process.env.CRON_SECRET;
+  const tokenParam = url.searchParams.get("secret") || url.searchParams.get("token");
+  const isVercelCron = request.headers.has("x-vercel-cron") || request.headers.has("x-vercel-id");
 
-  if (!expected || authHeader !== `Bearer ${expected}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (expected) {
+    const validHeader = authHeader === `Bearer ${expected}`;
+    const validQuery = tokenParam === expected;
+    const valid = validHeader || validQuery || isVercelCron;
+    if (!valid) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
   }
 
   const now = new Date();
