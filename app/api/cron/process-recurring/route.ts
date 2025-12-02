@@ -4,7 +4,7 @@ import { applyDueRecurrences } from "@/lib/recurring";
 
 export const runtime = "nodejs";
 
-export async function POST(request: Request) {
+async function handler(request: Request) {
   const authHeader = request.headers.get("authorization") || "";
   const expected = process.env.CRON_SECRET;
 
@@ -30,3 +30,6 @@ export async function POST(request: Request) {
     created,
   });
 }
+
+export const POST = handler;
+export const GET = handler;
