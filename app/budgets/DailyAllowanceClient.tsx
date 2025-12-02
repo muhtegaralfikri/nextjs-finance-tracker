@@ -267,7 +267,7 @@ export default function DailyAllowanceClient({
               key={day.date}
               className={`rounded-xl border px-3 py-2 transition-colors ${
                 day.status === "ok"
-                  ? "border-emerald-600/70 bg-emerald-500/10 text-emerald-100"
+                  ? "border-emerald-500 bg-emerald-50 text-emerald-800"
                 : day.status === "over"
                   ? "border-rose-400 bg-rose-100 text-rose-800"
                   : "border-[#cbd5e1] bg-[#e2e8f0] text-slate-800"
@@ -280,7 +280,7 @@ export default function DailyAllowanceClient({
                 <span
                   className={
                     day.status === "ok"
-                      ? "text-emerald-200"
+                      ? "text-emerald-700"
                       : day.status === "over"
                       ? "text-rose-700"
                       : "text-slate-600"
