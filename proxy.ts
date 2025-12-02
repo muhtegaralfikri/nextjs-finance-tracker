@@ -47,11 +47,15 @@ export async function proxy(req: NextRequest) {
 
     return NextResponse.next();
   } catch (error) {
+    const tokenSnippet = token.slice(0, 20);
     console.error("[proxy] Failed to decode session", {
       error,
       secretLength: secret.length,
       hasToken: Boolean(token),
-      tokenPrefix: token.slice(0, 10),
+      tokenPrefix: tokenSnippet,
+      processEnvAuthSecretLen: (process.env.AUTH_SECRET || "").length,
+      processEnvNextAuthSecretLen: (process.env.NEXTAUTH_SECRET || "").length,
+      nextAuthUrl: process.env.NEXTAUTH_URL,
     });
     return redirectToLogin(req);
   }

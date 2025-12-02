@@ -28,6 +28,7 @@ function LoginContent() {
       email,
       password,
       redirect: false,
+      callbackUrl: "/dashboard",
     });
 
     setLoading(false);
@@ -37,7 +38,7 @@ function LoginContent() {
       return;
     }
 
-    router.push("/dashboard");
+    router.push(res?.url || "/dashboard");
   }
 
   return (
