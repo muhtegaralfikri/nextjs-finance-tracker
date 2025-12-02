@@ -890,54 +890,58 @@ const FilterSection = memo(function FilterSection({
 }) {
   return (
     <Card>
-      <CardHeader className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <CardTitle>Filter</CardTitle>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 w-full md:w-auto">
-          <Input
-            type="date"
-            value={filters.from}
-            onChange={(e) => onFilterChange("from", e.target.value)}
-          />
-          <Input
-            type="date"
-            value={filters.to}
-            onChange={(e) => onFilterChange("to", e.target.value)}
-          />
-          <Select
-            value={filters.walletId}
-            onChange={(e) => onFilterChange("walletId", e.target.value)}
-          >
-            <option value="">Semua wallet</option>
-            {wallets.map((wallet) => (
-              <option key={wallet.id} value={wallet.id}>
-                {wallet.name}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={filters.categoryId}
-            onChange={(e) => onFilterChange("categoryId", e.target.value)}
-          >
-            <option value="">Semua kategori</option>
-            {categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.name}
-              </option>
-            ))}
-          </Select>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={onApply} loading={loading}>
-            Terapkan filter
-          </Button>
-          <Button type="button" variant="outline" onClick={onExport} loading={exporting}>
-            Export Excel
-          </Button>
-          <Button type="button" variant="ghost" onClick={onReset}>
-            Reset
-          </Button>
+      <CardHeader className="space-y-3">
+        <CardTitle>Filter</CardTitle>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2 flex-1 min-w-[280px]">
+            <Input
+              type="date"
+              value={filters.from}
+              onChange={(e) => onFilterChange("from", e.target.value)}
+              className="h-11"
+            />
+            <Input
+              type="date"
+              value={filters.to}
+              onChange={(e) => onFilterChange("to", e.target.value)}
+              className="h-11"
+            />
+            <Select
+              value={filters.walletId}
+              onChange={(e) => onFilterChange("walletId", e.target.value)}
+              className="h-11"
+            >
+              <option value="">Semua wallet</option>
+              {wallets.map((wallet) => (
+                <option key={wallet.id} value={wallet.id}>
+                  {wallet.name}
+                </option>
+              ))}
+            </Select>
+            <Select
+              value={filters.categoryId}
+              onChange={(e) => onFilterChange("categoryId", e.target.value)}
+              className="h-11"
+            >
+              <option value="">Semua kategori</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" onClick={onApply} loading={loading} className="h-11">
+              Terapkan filter
+            </Button>
+            <Button type="button" variant="outline" onClick={onExport} loading={exporting} className="h-11">
+              Export Excel
+            </Button>
+            <Button type="button" variant="ghost" onClick={onReset} className="h-11">
+              Reset
+            </Button>
+          </div>
         </div>
       </CardHeader>
     </Card>
