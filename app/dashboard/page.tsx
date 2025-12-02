@@ -55,15 +55,17 @@ export default async function DashboardPage() {
       balance: balancesMap.get(item.currency) ?? 0,
     })) || [];
 
+  const monthLabel = formatMonthLabel(summary.month);
+
   return (
     <AppShell>
       <div className="mx-auto max-w-6xl px-4 py-8">
-        <header className="mb-6 flex flex-col gap-2">
-          <p className="text-sm text-slate-400">Halo,</p>
-          <h1 className="text-3xl font-semibold text-white">{nameOrEmail}</h1>
+        <header className="mb-6 flex flex-col gap-1">
+          <h1 className="text-3xl font-semibold text-white">
+            Halo, <span className="text-slate-100">{nameOrEmail}</span>
+          </h1>
           <p className="text-slate-400 text-sm">
-            Ringkasan keuanganmu bulan {summary.month}. Kelola dompet, catat
-            transaksi, dan pantau pengeluaran per kategori.
+            Ringkasan bulan {monthLabel}. Pantau saldo, transaksi, dan pengeluaran.
           </p>
         </header>
 
@@ -148,7 +150,7 @@ export default async function DashboardPage() {
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold">Expense per Kategori</h2>
               <span className="text-xs text-slate-500">
-                Bulan {summary.month} • {summary.primaryCurrency}
+                Bulan {monthLabel} • {summary.primaryCurrency}
                 {summary.totalsByCurrency?.length > 1 ? " (currency lain dilihat via transaksi)" : ""}
               </span>
             </div>
@@ -160,7 +162,7 @@ export default async function DashboardPage() {
         <section className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold">Budgets Bulan {summary.month}</h2>
+              <h2 className="text-lg font-semibold">Budgets Bulan {monthLabel}</h2>
               <a href="/budgets" className="text-sm text-emerald-400 hover:text-emerald-300">
                 Kelola →
               </a>
@@ -364,6 +366,11 @@ const dateFormatter = new Intl.DateTimeFormat("id-ID", {
   year: "numeric",
   timeZone: "UTC",
 });
+const monthFormatter = new Intl.DateTimeFormat("id-ID", {
+  month: "short",
+  year: "numeric",
+  timeZone: "UTC",
+});
 
 function formatDate(value: string | Date) {
   return dateFormatter.format(new Date(value));
@@ -377,6 +384,14 @@ function formatCurrency(value: number, currency = "IDR") {
   })
     .format(value || 0)
     .replace(/\s/g, "");
+}
+
+function formatMonthLabel(month: string) {
+  const [year, monthNum] = month.split("-");
+  const safeMonth = Number(monthNum);
+  const safeYear = Number(year);
+  const date = new Date(Date.UTC(safeYear, safeMonth - 1, 1));
+  return monthFormatter.format(date);
 }
 
 function buildTrendSeries(

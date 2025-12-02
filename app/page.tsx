@@ -19,8 +19,7 @@ export default function Home() {
               Satu tempat untuk catat dompet, transaksi, dan ringkasan keuanganmu.
             </h1>
             <p className="mt-3 text-slate-300 max-w-2xl">
-              Dibangun dengan Next.js App Router + Prisma + Auth.js. Kelola banyak wallet,
-              kategori, dan lihat performa bulanan tanpa ribet.
+              Kelola banyak wallet, atur kategori, dan lihat performa keuangan bulanan tanpa ribet.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
