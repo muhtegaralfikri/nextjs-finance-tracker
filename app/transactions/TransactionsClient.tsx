@@ -11,6 +11,7 @@ import { CategoryType, RecurringCadence, TransactionType } from "@/lib/financeTy
 import { formatCurrency } from "@/lib/currency";
 import { formatDate } from "@/lib/date";
 import { measureAsync, reportMetric } from "@/lib/metrics";
+import { createTransactionAction } from "./actions";
 
 export type TransactionWallet = {
   id: string;
@@ -344,8 +345,53 @@ export default function TransactionsClient({
       note: form.note,
     };
 
-    const endpoint = editingId ? `/api/transactions/${editingId}` : "/api/transactions";
-    const method = editingId ? "PATCH" : "POST";
+    if (!editingId) {
+      const wallet = wallets.find((w) => w.id === form.walletId);
+      const category = categories.find((c) => c.id === form.categoryId);
+      const optimisticId = `optimistic-${Date.now()}`;
+      if (wallet && category) {
+        const optimisticTx: TransactionClientData = {
+          id: optimisticId,
+          walletId: wallet.id,
+          walletName: wallet.name,
+          categoryId: category.id,
+          categoryName: category.name,
+          categoryType: category.type,
+          type: form.type,
+          amount: Number(form.amount),
+          date: form.date,
+          note: form.note || undefined,
+        };
+        setTransactionsData((prev) => ({
+          total: prev.total + 1,
+          transactions: [optimisticTx, ...prev.transactions],
+        }));
+      }
+
+      try {
+        await createTransactionAction(payload);
+        cacheRef.current.clear();
+        await fetchTransactions(debouncedFilters, 1);
+        setPage(1);
+        setStatus({ type: "success", message: "Transaksi tersimpan" });
+        resetForm();
+      } catch (error) {
+        setTransactionsData((prev) => ({
+          total: Math.max(0, prev.total - 1),
+          transactions: prev.transactions.filter((tx) => tx.id !== optimisticId),
+        }));
+        setStatus({
+          type: "error",
+          message: error instanceof Error ? error.message : "Gagal menyimpan transaksi",
+        });
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
+    const endpoint = `/api/transactions/${editingId}`;
+    const method = "PATCH";
 
     try {
       const res = await fetch(endpoint, {

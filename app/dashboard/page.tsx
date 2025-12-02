@@ -36,11 +36,24 @@ export default async function DashboardPage() {
   const trendFrom = new Date();
   trendFrom.setDate(trendFrom.getDate() - 13);
   const trendTransactions = await prisma.transaction.findMany({
-    where: { userId, date: { gte: trendFrom } },
+    where: {
+      userId,
+      date: { gte: trendFrom },
+      wallet: { currency: summary.primaryCurrency },
+    },
     select: { type: true, amount: true, date: true },
     orderBy: { date: "asc" },
   });
   const trend = buildTrendSeries(trendTransactions, trendFrom);
+
+  const balancesMap = new Map(
+    (summary.totalBalanceByCurrency || []).map((item) => [item.currency, item.total])
+  );
+  const statsByCurrency =
+    summary.totalsByCurrency?.map((item) => ({
+      ...item,
+      balance: balancesMap.get(item.currency) ?? 0,
+    })) || [];
 
   return (
     <AppShell>
@@ -54,34 +67,43 @@ export default async function DashboardPage() {
           </p>
         </header>
 
-        {/* --- STATS SECTION --- */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <StatCard
-            title="Total Saldo"
-            value={formatCurrency(summary.totalBalance)}
-            accent="from-emerald-500/80 to-emerald-400/60"
-          />
-          <StatCard
-            title="Income Bulan Ini"
-            value={formatCurrency(summary.totalIncome)}
-            accent="from-sky-500/80 to-sky-400/60"
-          />
-          <StatCard
-            title="Expense Bulan Ini"
-            value={formatCurrency(summary.totalExpense)}
-            accent="from-rose-500/80 to-rose-400/60"
-          />
-          <StatCard
-            title="Net"
-            value={formatCurrency(summary.net)}
-            accent={summary.net >= 0 ? "from-emerald-500/80 to-emerald-400/60" : "from-amber-500/80 to-amber-400/60"}
-          />
-        </section>
+        {/* --- STATS SECTION (PER CURRENCY) --- */}
+        {statsByCurrency.length === 0 ? null : (
+          <section className="space-y-4 mb-6">
+            {statsByCurrency.map((stat) => (
+              <div
+                key={stat.currency}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+              >
+                <StatCard
+                  title={`Total Saldo (${stat.currency})`}
+                  value={formatCurrency(stat.balance, stat.currency)}
+                  accent="from-emerald-500/80 to-emerald-400/60"
+                />
+                <StatCard
+                  title={`Income Bulan Ini (${stat.currency})`}
+                  value={formatCurrency(stat.income, stat.currency)}
+                  accent="from-sky-500/80 to-sky-400/60"
+                />
+                <StatCard
+                  title={`Expense Bulan Ini (${stat.currency})`}
+                  value={formatCurrency(stat.expense, stat.currency)}
+                  accent="from-rose-500/80 to-rose-400/60"
+                />
+                <StatCard
+                  title={`Net (${stat.currency})`}
+                  value={formatCurrency(stat.net, stat.currency)}
+                  accent={stat.net >= 0 ? "from-emerald-500/80 to-emerald-400/60" : "from-amber-500/80 to-amber-400/60"}
+                />
+              </div>
+            ))}
+          </section>
+        )}
 
         {/* --- TREN 14 HARI --- */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <SparklineCard title="Income 14 hari" total={summary.totalIncome} series={trend.income} />
-          <SparklineCard title="Expense 14 hari" total={summary.totalExpense} series={trend.expense} variant="expense" />
+          <SparklineCard title={`Income 14 hari (${summary.primaryCurrency})`} total={summary.totalIncome} series={trend.income} currency={summary.primaryCurrency} />
+          <SparklineCard title={`Expense 14 hari (${summary.primaryCurrency})`} total={summary.totalExpense} series={trend.expense} currency={summary.primaryCurrency} variant="expense" />
         </section>
 
         {/* --- WALLETS & CATEGORIES SECTION --- */}
@@ -114,7 +136,7 @@ export default async function DashboardPage() {
                       </p>
                     </div>
                     <p className="font-semibold text-emerald-400">
-                      {formatCurrency(decimalToNumber(wallet.balance))}
+                      {formatCurrency(decimalToNumber(wallet.balance), wallet.currency)}
                     </p>
                   </div>
                 ))
@@ -125,9 +147,12 @@ export default async function DashboardPage() {
           <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold">Expense per Kategori</h2>
-              <span className="text-xs text-slate-500">Bulan {summary.month}</span>
+              <span className="text-xs text-slate-500">
+                Bulan {summary.month} • {summary.primaryCurrency}
+                {summary.totalsByCurrency?.length > 1 ? " (currency lain dilihat via transaksi)" : ""}
+              </span>
             </div>
-            <CategoryPie data={summary.byCategory} />
+            <CategoryPie data={summary.byCategory} currency={summary.primaryCurrency} />
           </div>
         </section>
 
@@ -162,8 +187,15 @@ export default async function DashboardPage() {
                       />
                     </div>
                     <p className="text-xs text-slate-300 mt-1">
-                      {formatCurrency(decimalToNumber(budget.spent))} /{" "}
-                      {formatCurrency(decimalToNumber(budget.amount))}
+                      {formatCurrency(
+                        decimalToNumber(budget.spent),
+                        (budget as { currency?: string }).currency || "IDR"
+                      )}{" "}
+                      /{" "}
+                      {formatCurrency(
+                        decimalToNumber(budget.amount),
+                        (budget as { currency?: string }).currency || "IDR"
+                      )}
                     </p>
                   </div>
                 ))}
@@ -202,8 +234,16 @@ export default async function DashboardPage() {
                       />
                     </div>
                     <p className="text-xs text-slate-300 mt-1">
-                      {formatCurrency(decimalToNumber(goal.currentAmount))} /{" "}
-                      {formatCurrency(decimalToNumber(goal.targetAmount))} ({goal.progress}%)
+                      {formatCurrency(
+                        decimalToNumber(goal.currentAmount),
+                        (goal as { currency?: string }).currency || "IDR"
+                      )}{" "}
+                      /{" "}
+                      {formatCurrency(
+                        decimalToNumber(goal.targetAmount),
+                        (goal as { currency?: string }).currency || "IDR"
+                      )}{" "}
+                      ({goal.progress}%)
                     </p>
                   </div>
                 ))}
@@ -329,10 +369,10 @@ function formatDate(value: string | Date) {
   return dateFormatter.format(new Date(value));
 }
 
-function formatCurrency(value: number) {
+function formatCurrency(value: number, currency = "IDR") {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
-    currency: "IDR",
+    currency,
     maximumFractionDigits: 0,
   })
     .format(value || 0)
@@ -388,8 +428,10 @@ function StatCard({
 
 function CategoryPie({
   data,
+  currency,
 }: {
   data: { categoryName: string; total: number }[];
+  currency: string;
 }) {
   const total = data.reduce((acc, item) => acc + item.total, 0);
   if (total <= 0) {
@@ -436,7 +478,7 @@ function CategoryPie({
         <div className="absolute inset-4 rounded-full bg-slate-900/80 border border-slate-800 flex items-center justify-center">
           <div className="text-center">
             <p className="text-xs text-slate-400">Total</p>
-            <p className="text-sm font-semibold text-white">{formatCurrency(total)}</p>
+            <p className="text-sm font-semibold text-white">{formatCurrency(total, currency)}</p>
           </div>
         </div>
       </div>
@@ -455,7 +497,7 @@ function CategoryPie({
             </div>
             <div className="text-right">
               <p className="text-xs text-slate-400">{seg.share.toFixed(1)}%</p>
-              <p className="text-sm font-semibold text-rose-200">{formatCurrency(seg.total)}</p>
+              <p className="text-sm font-semibold text-rose-200">{formatCurrency(seg.total, currency)}</p>
             </div>
           </div>
         ))}
@@ -468,11 +510,13 @@ function SparklineCard({
   title,
   total,
   series,
+  currency = "IDR",
   variant = "income",
 }: {
   title: string;
   total: number;
   series: number[];
+  currency?: string;
   variant?: "income" | "expense";
 }) {
   const max = Math.max(...series, 1);
@@ -489,7 +533,7 @@ function SparklineCard({
       <div className="flex items-center justify-between mb-2">
         <div>
           <p className="text-xs text-slate-400">{title}</p>
-          <p className="text-lg font-semibold text-white">{formatCurrency(total)}</p>
+          <p className="text-lg font-semibold text-white">{formatCurrency(total, currency)}</p>
         </div>
         <span className="text-[11px] text-slate-500">14 hari</span>
       </div>
