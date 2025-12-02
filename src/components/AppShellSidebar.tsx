@@ -24,6 +24,10 @@ const iconMap = {
 
 export default function AppShellSidebar({ navItems }: { navItems: NavItem[] }) {
   const pathname = usePathname();
+  const lastSync = new Date().toLocaleTimeString("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return (
     <aside className="hidden lg:flex w-64 flex-col border-r border-slate-900/80 bg-slate-950/90 backdrop-blur sticky top-0 h-screen">
@@ -59,8 +63,8 @@ export default function AppShellSidebar({ navItems }: { navItems: NavItem[] }) {
       </nav>
 
       <div className="mt-auto px-4 py-4 text-xs text-slate-500 border-t border-slate-900/80">
-        <p className="font-semibold text-slate-300">Hybrid Nav</p>
-        <p>Sidebar untuk layar besar, bottom bar untuk mobile.</p>
+        <p className="font-semibold text-slate-300">Status sinkronisasi</p>
+        <p>Terakhir sinkron: {lastSync}</p>
       </div>
     </aside>
   );
