@@ -55,6 +55,16 @@ export async function PATCH(
       updates.currentAmount = parsed;
     }
 
+    // Validasi currentAmount tidak melebihi targetAmount
+    const finalTarget = (updates.targetAmount as number) ?? Number(goal.targetAmount);
+    const finalCurrent = (updates.currentAmount as number) ?? Number(goal.currentAmount);
+    if (finalCurrent > finalTarget) {
+      return NextResponse.json(
+        { error: "currentAmount tidak boleh melebihi targetAmount" },
+        { status: 400 }
+      );
+    }
+
     if (deadline !== undefined) {
       if (!deadline) {
         updates.deadline = null;

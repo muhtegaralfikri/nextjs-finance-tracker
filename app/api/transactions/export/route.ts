@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import ExcelJS from "exceljs";
 import { PassThrough, Readable } from "node:stream";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -46,6 +45,8 @@ export async function GET(request: Request) {
   const walletLabel = walletId ? `Wallet: ${walletName || walletId}` : "Wallet: Semua";
   const categoryLabel = categoryId ? `Kategori: ${categoryName || categoryId}` : "Kategori: Semua";
 
+  // Dynamic import ExcelJS - hanya load saat export dipanggil
+  const ExcelJS = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Transactions");
 
@@ -116,16 +117,15 @@ export async function GET(request: Request) {
   // Freeze header
   sheet.views = [{ state: "frozen", ySplit: tableStartRow }];
 
-  // Stream the workbook to avoid holding large buffers in memory.
+  // Stream the workbook to avoid holding large buffers in memory
   const passThrough = new PassThrough();
   void workbook.xlsx.write(passThrough).catch((err) => passThrough.destroy(err));
   const webStream = Readable.toWeb(passThrough) as unknown as ReadableStream;
 
   return new NextResponse(webStream, {
     headers: {
-      "Content-Type":
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename=\"transactions.xlsx\"`,
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="transactions.xlsx"`,
       "Cache-Control": "private, max-age=300",
       "Transfer-Encoding": "chunked",
     },

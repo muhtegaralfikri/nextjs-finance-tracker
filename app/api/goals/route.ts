@@ -50,6 +50,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (parsedCurrent > parsedTarget) {
+      return NextResponse.json(
+        { error: "currentAmount tidak boleh melebihi targetAmount" },
+        { status: 400 }
+      );
+    }
+
     let parsedDeadline: Date | undefined;
     if (deadline) {
       const dateObj = new Date(deadline);

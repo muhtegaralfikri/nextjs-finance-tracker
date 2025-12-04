@@ -4,6 +4,23 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
 
+  // Optimasi build
+  reactStrictMode: true,
+  
+  // Optimasi bundle - exclude heavy packages dari client bundle
+  serverExternalPackages: ["exceljs", "bcryptjs"],
+
+  // Optimasi gambar
+  images: {
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 hari
+  },
+
+  // Experimental optimizations
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+  },
+
   async headers() {
     return [
       {
@@ -45,6 +62,18 @@ const nextConfig: NextConfig = {
         headers: [
           { key: "Service-Worker-Allowed", value: "/" },
           { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+        ],
+      },
+      {
+        source: "/icons/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+        ],
+      },
+      {
+        source: "/:path*.svg",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
         ],
       },
     ];

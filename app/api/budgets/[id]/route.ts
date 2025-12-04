@@ -32,9 +32,9 @@ export async function PATCH(
 
     const parsedAmount =
       amount !== undefined ? Number(amount) : undefined;
-    if (parsedAmount !== undefined && (Number.isNaN(parsedAmount) || parsedAmount < 0)) {
+    if (parsedAmount !== undefined && (Number.isNaN(parsedAmount) || parsedAmount <= 0)) {
       return NextResponse.json(
-        { error: "Amount harus berupa angka positif" },
+        { error: "Amount harus lebih besar dari 0" },
         { status: 400 }
       );
     }

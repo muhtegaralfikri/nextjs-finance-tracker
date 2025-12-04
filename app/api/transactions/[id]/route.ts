@@ -96,6 +96,63 @@ export async function PATCH(
       amount !== undefined ? new Prisma.Decimal(amount) : new Prisma.Decimal(transaction.amount);
     const nextWalletId = walletId ?? transaction.walletId;
 
+    // Hitung perubahan saldo untuk validasi
+    const targetWallet = await prisma.wallet.findFirst({
+      where: { id: nextWalletId, userId: session.user.id },
+    });
+
+    if (!targetWallet) {
+      return NextResponse.json(
+        { error: "Wallet tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
+    // Kalkulasi dampak perubahan terhadap saldo
+    const oldImpact = transaction.type === TransactionType.INCOME
+      ? Number(transaction.amount)
+      : -Number(transaction.amount);
+    const newImpact = targetType === TransactionType.INCOME
+      ? Number(nextAmountDecimal)
+      : -Number(nextAmountDecimal);
+
+    if (transaction.walletId === nextWalletId) {
+      // Wallet sama - hitung delta
+      const delta = newImpact - oldImpact;
+      const projectedBalance = Number(targetWallet.currentBalance) + delta;
+      if (projectedBalance < 0) {
+        return NextResponse.json(
+          { error: `Perubahan ini akan menyebabkan saldo negatif. Saldo saat ini: Rp${Number(targetWallet.currentBalance).toLocaleString("id-ID")}` },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Wallet berbeda - cek wallet asal dan tujuan
+      const sourceWallet = await prisma.wallet.findFirst({
+        where: { id: transaction.walletId, userId: session.user.id },
+      });
+
+      if (sourceWallet) {
+        // Kembalikan dampak lama ke wallet asal
+        const sourceProjected = Number(sourceWallet.currentBalance) - oldImpact;
+        if (sourceProjected < 0) {
+          return NextResponse.json(
+            { error: `Perubahan ini akan menyebabkan saldo wallet asal negatif` },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Terapkan dampak baru ke wallet tujuan
+      const targetProjected = Number(targetWallet.currentBalance) + newImpact;
+      if (targetProjected < 0) {
+        return NextResponse.json(
+          { error: `Perubahan ini akan menyebabkan saldo wallet tujuan negatif` },
+          { status: 400 }
+        );
+      }
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
       const result = await tx.transaction.update({
         where: { id: transaction.id },
@@ -171,6 +228,30 @@ export async function DELETE(
 
   if (!transaction) {
     return NextResponse.json({ error: "Transaksi tidak ditemukan" }, { status: 404 });
+  }
+
+  // Cek apakah menghapus transaksi ini akan menyebabkan saldo negatif
+  const wallet = await prisma.wallet.findFirst({
+    where: { id: transaction.walletId, userId: session.user.id },
+  });
+
+  if (wallet) {
+    const currentBalance = Number(wallet.currentBalance);
+    const transactionAmount = Number(transaction.amount);
+
+    // Jika hapus INCOME, saldo akan berkurang
+    // Jika hapus EXPENSE, saldo akan bertambah (tidak masalah)
+    if (transaction.type === TransactionType.INCOME) {
+      const projectedBalance = currentBalance - transactionAmount;
+      if (projectedBalance < 0) {
+        return NextResponse.json(
+          { 
+            error: `Tidak dapat menghapus transaksi income ini karena akan menyebabkan saldo negatif. Saldo saat ini: Rp${currentBalance.toLocaleString("id-ID")}, pengurangan: Rp${transactionAmount.toLocaleString("id-ID")}` 
+          },
+          { status: 400 }
+        );
+      }
+    }
   }
 
   await prisma.$transaction(async (tx) => {

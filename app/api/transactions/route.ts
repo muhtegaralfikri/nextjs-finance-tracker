@@ -149,6 +149,19 @@ export async function POST(request: Request) {
 
     const decimalAmount = new Prisma.Decimal(amount);
 
+    // Cek saldo cukup untuk expense
+    if (type === TransactionType.EXPENSE) {
+      const currentBalance = Number(wallet.currentBalance);
+      if (currentBalance < amount) {
+        return NextResponse.json(
+          { 
+            error: `Saldo tidak cukup. Saldo saat ini: Rp${currentBalance.toLocaleString("id-ID")}, dibutuhkan: Rp${amount.toLocaleString("id-ID")}` 
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const transaction = await prisma.$transaction(async (tx) => {
       const created = await tx.transaction.create({
         data: {

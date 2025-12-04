@@ -47,6 +47,19 @@ export async function PATCH(
         ? parsedInitial.minus(wallet.initialBalance)
         : undefined;
 
+    // Validasi: perubahan initialBalance tidak boleh menyebabkan saldo negatif
+    if (deltaInitial && !deltaInitial.isZero()) {
+      const projectedBalance = Number(wallet.currentBalance) + Number(deltaInitial);
+      if (projectedBalance < 0) {
+        return NextResponse.json(
+          { 
+            error: `Perubahan saldo awal akan menyebabkan saldo negatif. Saldo saat ini: Rp${Number(wallet.currentBalance).toLocaleString("id-ID")}` 
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const updated = await prisma.wallet.update({
       where: { id: wallet.id },
       data: {

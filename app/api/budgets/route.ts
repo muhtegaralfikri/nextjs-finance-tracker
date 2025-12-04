@@ -47,9 +47,9 @@ export async function POST(request: Request) {
     }
 
     const parsedAmount = Number(amount);
-    if (Number.isNaN(parsedAmount) || parsedAmount < 0) {
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
       return NextResponse.json(
-        { error: "Amount harus berupa angka positif" },
+        { error: "Amount harus lebih besar dari 0" },
         { status: 400 }
       );
     }

@@ -56,6 +56,18 @@ export async function POST(request: Request) {
       );
     }
 
+    // Cek saldo cukup untuk transfer + fee
+    const totalNeeded = amount + fee;
+    const currentBalance = Number(fromWallet.currentBalance);
+    if (currentBalance < totalNeeded) {
+      return NextResponse.json(
+        { 
+          error: `Saldo tidak cukup. Saldo saat ini: Rp${currentBalance.toLocaleString("id-ID")}, dibutuhkan: Rp${totalNeeded.toLocaleString("id-ID")}` 
+        },
+        { status: 400 }
+      );
+    }
+
     const [transferOutCategory, transferInCategory, feeCategory] = await Promise.all([
       getOrCreateCategory(userId, "Transfer Keluar", CategoryType.EXPENSE),
       getOrCreateCategory(userId, "Transfer Masuk", CategoryType.INCOME),

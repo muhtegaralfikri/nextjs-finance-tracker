@@ -22,14 +22,32 @@ export async function applyDueRecurrences(userId: string) {
     include: { wallet: true, category: true },
   });
 
-  if (due.length === 0) return { created: 0 };
+  if (due.length === 0) return { created: 0, skipped: 0 };
 
   let createdCount = 0;
+  let skippedCount = 0;
+
   await prisma.$transaction(async (tx) => {
     for (const rule of due) {
       if (!rule.wallet || !rule.category) {
         continue;
       }
+
+      // Cek saldo cukup untuk expense
+      if (rule.type === TransactionType.EXPENSE) {
+        const currentBalance = Number(rule.wallet.currentBalance);
+        const amount = Number(rule.amount);
+        if (currentBalance < amount) {
+          // Skip transaksi ini, tapi tetap update nextRun agar tidak stuck
+          await tx.recurringTransaction.update({
+            where: { id: rule.id },
+            data: { nextRun: nextDate(rule.nextRun, rule.cadence) },
+          });
+          skippedCount += 1;
+          continue;
+        }
+      }
+
       await tx.transaction.create({
         data: {
           userId,
@@ -57,10 +75,9 @@ export async function applyDueRecurrences(userId: string) {
         data: { nextRun: nextDate(rule.nextRun, rule.cadence) },
       });
 
-      // Count successful creation
       createdCount += 1;
     }
   });
 
-  return { created: createdCount };
+  return { created: createdCount, skipped: skippedCount };
 }
