@@ -1,0 +1,19 @@
+PWA Icon Placeholder
+
+Generate icons in the following sizes and replace this file:
+- icon-72x72.png
+- icon-96x96.png
+- icon-128x128.png
+- icon-144x144.png
+- icon-152x152.png
+- icon-192x192.png
+- icon-384x384.png
+- icon-512x512.png
+
+Recommended: Use a tool like https://realfavicongenerator.net/ or https://pwa-asset-generator.niccc.io/
+to generate all required icon sizes from a single source image.
+
+The icon should be:
+- Square (1:1 ratio)
+- Simple and recognizable at small sizes
+- Use your app's brand colors (emerald green #10b981 recommended)

@@ -1,59 +1,84 @@
-// src/app/api/register/route.ts
-import { NextResponse } from "next/server";
+import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { apiSuccess, apiError, apiValidationError, apiServerError } from "@/lib/api";
+import { rateLimiters, getClientIp } from "@/lib/rateLimit";
+import { sanitizeInput } from "@/lib/sanitize";
+import { createLogger } from "@/lib/logger";
 
 export const runtime = "nodejs";
 
+const logger = createLogger("api:register");
+
+const registerSchema = z.object({
+  name: z.string().min(2, "Nama minimal 2 karakter").max(100),
+  email: z.string().email("Format email tidak valid"),
+  password: z
+    .string()
+    .min(8, "Password minimal 8 karakter")
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      "Password harus mengandung huruf besar, huruf kecil, dan angka"
+    ),
+});
+
 export async function POST(request: Request) {
   try {
+    // Rate limiting for auth endpoints
+    const ip = getClientIp(request);
+    const rateLimitResult = rateLimiters.auth(ip);
+
+    if (!rateLimitResult.success) {
+      logger.warn("Rate limit exceeded", { ip });
+      return apiError("Terlalu banyak percobaan. Coba lagi dalam 15 menit.", 429);
+    }
+
     const body = await request.json();
-    const { name, email, password } = body;
 
-    if (!name || !email || !password) {
-      return NextResponse.json(
-        { error: "Name, email, dan password wajib diisi" },
-        { status: 400 }
-      );
+    // Validate with Zod
+    const parsed = registerSchema.safeParse(body);
+    if (!parsed.success) {
+      return apiValidationError(parsed.error.flatten().fieldErrors);
     }
 
-    const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-    if (!strongPassword.test(password)) {
-      return NextResponse.json(
-        { error: "Password minimal 8 karakter dengan huruf besar, kecil, dan angka" },
-        { status: 400 }
-      );
-    }
+    const { name, email, password } = parsed.data;
 
+    // Sanitize name input
+    const sanitizedName = sanitizeInput(name);
+
+    // Check existing user
     const existing = await prisma.user.findUnique({
-      where: { email },
+      where: { email: email.toLowerCase() },
     });
 
     if (existing) {
-      return NextResponse.json(
-        { error: "Email sudah terdaftar" },
-        { status: 400 }
-      );
+      logger.info("Registration attempt with existing email", { email });
+      return apiError("Email sudah terdaftar", 400);
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 12);
 
-    await prisma.user.create({
+    // Create user
+    const user = await prisma.user.create({
       data: {
-        name,
-        email,
+        name: sanitizedName,
+        email: email.toLowerCase(),
         passwordHash,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        createdAt: true,
       },
     });
 
-    return NextResponse.json({ success: true }, { status: 201 });
-  } catch (err) {
-    // Di blok catch:
-  console.error("REGISTER ERROR:", err); // Pastikan ada prefix biar gampang dicari
-    return NextResponse.json(
-    { error: err instanceof Error ? err.message : "Terjadi kesalahan di server" },
-    { status: 500 }
-  );
-    
+    logger.info("User registered successfully", { userId: user.id });
+
+    return apiSuccess({ user }, 201);
+  } catch (error) {
+    logger.error("Registration failed", error);
+    return apiServerError(error);
   }
 }

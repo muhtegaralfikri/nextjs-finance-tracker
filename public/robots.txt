@@ -1,0 +1,13 @@
+# Personal Finance Tracker - robots.txt
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard/
+Disallow: /wallets/
+Disallow: /transactions/
+Disallow: /budgets/
+Disallow: /profile/
+Disallow: /settings/
+
+# Sitemap
+Sitemap: https://yourfinanceapp.com/sitemap.xml
